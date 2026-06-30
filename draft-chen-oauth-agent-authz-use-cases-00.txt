@@ -1,0 +1,616 @@
+
+
+
+
+OAuth Working Group                                              M. Chen
+Internet-Draft                                                   J. Chen
+Intended status: Standards Track                            China Mobile
+Expires: 1 January 2027                                     30 June 2026
+
+
+             Agent Authorization use cases and gap analysis
+               draft-chen-oauth-agent-authz-use-cases-00
+
+Abstract
+
+   This document provides a systematic analysis of these emerging agent-
+   based use cases.  It categorizes them into distinct scenarios,
+   details their specific authorization requirements, and performs a
+   comprehensive gap analysis against the existing OAuth 2.0 framework
+   [RFC6749] and its common extensions.  The analysis identifies
+   fundamental mismatches, the goal of this document is to articulate
+   these gaps clearly, providing a foundation for future work on new
+   extensions within the OAuth Working Group to address the
+   authorization needs of the next generation of ai agents.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 1 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 1]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Core Use Cases and Gap Analysis . . . . . . . . . . . . . . .   4
+     3.1.  Category 1: Personal & Consumer Scenarios . . . . . . . .   4
+       3.1.1.  Use Case 1: Personal Digital Assistant  . . . . . . .   4
+       3.1.2.  Use Case 2: Smart Home & Automation . . . . . . . . .   5
+     3.2.  Category 2: Enterprise & Business Process Scenarios . . .   7
+       3.2.1.  Use Case 3: Complex Business Process Automation . . .   7
+     3.3.  Category 3: Security & Administrative Scenarios . . . . .   8
+       3.3.1.  Use Case 4: Automated Security Incident Response  . .   8
+   4.  Summary of Major Gaps . . . . . . . . . . . . . . . . . . . .   9
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   7.  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . .  10
+   8.  Informative References  . . . . . . . . . . . . . . . . . . .  10
+   Appendix A.  References . . . . . . . . . . . . . . . . . . . . .  11
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  11
+
+1.  Introduction
+
+   The OAuth 2.0 Authorization Framework [RFC6749] has become the de
+   facto standard for delegated authorization on the internet.  Its
+   success is rooted in a well-defined model where a resource owner
+   grants a third-party client limited access to their resources without
+   sharing their credentials.  This model primarily assumes a user-
+   present, interactive flow where a static set of permissions (scopes)
+   is approved upfront.
+
+   However, the landscape is rapidly evolving with the advent of
+   sophisticated AI-driven "Agents".  These are not simple clients but
+   autonomous or semi-autonomous entities that perform complex, multi-
+   step tasks on behalf of a user or another system.  Their operational
+   characteristics include:
+
+   *  *Delegated Autonomy:* Agents act with authority delegated from a
+      principal (user or system) over extended periods.
+
+   *  *Complex Task Decomposition:* An agent might take a high-level
+      instruction (e.g., "plan my business trip") and decompose it into
+      numerous discrete actions involving multiple resource servers.
+
+
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 2]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+   *  *Asynchronous & Long-Running Operations:* Tasks may run for hours,
+      days, or indefinitely, often without direct, real-time supervision
+      from the principal.
+
+   *  *Dynamic & Emergent Needs:* The exact permissions required may not
+      be known at the start of a task but emerge as the agent plans and
+      executes its steps.
+
+   *  *Composition & Chaining:* Agents may delegate sub-tasks to other
+      agents, forming a chain of authority.
+
+   This document does not propose new solutions or protocols.  Instead,
+   its purpose is to: * Define the key actors and concepts in agent-
+   based authorization scenarios. * Describe a set of core use cases
+   that exemplify the new challenges. * Conduct a gap analysis for each
+   use case, identifying where the current OAuth 2.0 framework and its
+   extensions fall short. * Summarize the key security considerations.
+
+   By clearly articulating these gaps, this document aims to provide a
+   shared understanding of the problem space and stimulate focused work
+   on developing interoperable solutions for the next generation of
+   delegated authorization.
+
+2.  Terminology
+
+   In addition to the terms defined in [RFC6749], this document uses the
+   following terms:
+
+   *User (Resource Owner):*  An entity capable of granting access to a
+      protected resource.  In the context of this document, the user is
+      the person who delegates authority to an agent.  Conforms to the
+      definition of "Resource Owner" in [RFC6749].
+
+   *Authorization Server (AS):*  The server that authenticates the User
+      and issues access tokens to the Agent after obtaining the User's
+      authorization.  Conforms to the definition in [RFC6749].
+
+   *Resource Server (RS):*  The server hosting the protected resources,
+      capable of accepting and responding to protected resource requests
+      using access tokens.  Conforms to the definition in [RFC6749].
+
+   *Delegation Chain:*  A sequence of delegation events, where one actor
+      grants a subset of its authority to another.  For example: User ->
+      Agent A -> Agent B.
+
+   *Intent:*  A high-level description of a goal or task that the user
+      wants the agent to accomplish (e.g., "book me a flight to Hawaii
+      for next week").
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 3]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+   *Tool:*  A specific API or function that an agent can call to perform
+      an action (e.g., a search_flights API, a send_email function).
+
+3.  Core Use Cases and Gap Analysis
+
+   This section explores different categories of use cases, providing a
+   concrete example for each, and analyzes the gaps in the existing
+   OAuth 2.x framework.  For each use case, we examine what can be
+   achieved with existing tools and, more importantly, what is missing.
+
+3.1.  Category 1: Personal & Consumer Scenarios
+
+3.1.1.  Use Case 1: Personal Digital Assistant
+
+   *  *Scenario Description:* A user gives a high-level, natural
+      language command to their AI assistant.  The assistant must
+      decompose this command into multiple steps and interact with
+      various services to fulfill the request.
+
+   *  *Example:* Alice tells her AI assistant, _"Help me plan a picnic
+      for this Saturday."_ The assistant needs to:
+
+      1.  Check Alice's calendar for availability (requires
+          calendar.read).
+
+      2.  Check the weather forecast for Saturday (requires
+          weather.read).
+
+      3.  If the weather is good, suggest nearby parks (requires
+          maps.search).
+
+      4.  After Alice chooses a park, book a picnic spot if required
+          (requires parks.book).
+
+      5.  Finally, add the event to Alice's calendar (requires
+          calendar.write).
+
+   *  *Authorization Requirements:*
+
+      -  *Intent-to-Permission Translation:* The system must translate
+         the high-level intent ("plan a picnic") into a series of
+         specific, just-in-time permission requests.
+
+      -  *Interactive, Multi-Step Consent:* The agent needs to "talk
+         back" to the user for intermediate decisions (e.g., "The
+         weather looks great!  I found three parks nearby.  Which one do
+         you prefer?").  Authorization for the next step (booking)
+         should only be granted after the user's choice.
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 4]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+      -  *Task-Level Revocation:* Alice should be able to say, _"Cancel
+         the picnic planning,"_ and have all permissions related to this
+         specific task instantly revoked, without affecting other tasks
+         the agent might be performing.
+
+   *  *Gap Analysis:*
+
+      -  *What Works (Partially):* The OAuth Authorization Code flow can
+         be used to get the initial permissions (like calendar.read).
+         Refresh Tokens can keep the agent's session alive.
+
+      -  *What's Missing (The Gap):*
+
+         o  *Fundamental Paradigm Mismatch:* OAuth is a *"pre-
+            authorization"* model.  It asks the user to approve a static
+            list of scopes (calendar.read, weather.read, maps.search,
+            etc.) all at once at the beginning.  It cannot understand
+            the _intent_ ("plan a picnic") and dynamically grant
+            permissions as the task unfolds.  This is the core gap.
+
+         o  *No Standardized Interactive Flow:* There is no standard
+            OAuth mechanism for an agent to "pause" a task, ask the user
+            for a decision, and then use that decision to request a new,
+            specific permission.  This logic is currently left to
+            complex, proprietary application-layer implementations.
+
+         o  *Impractical Revocation:* OAuth Token Revocation ([RFC7009])
+            revokes a single token.  To achieve task-level revocation,
+            the application would need to manage a complex mapping of
+            tasks to tokens.  There is no standard way to say "revoke
+            everything related to 'picnic planning'."
+
+3.1.2.  Use Case 2: Smart Home & Automation
+
+   *  *Scenario Description:* A central home hub agent manages various
+      IoT devices based on pre-defined rules or real-time events.
+
+   *  *Example:* Bob sets up a "Good Morning" routine.  When his alarm
+      goes off at 7 AM on a weekday, the home hub agent is authorized
+      to:
+
+      1.  Slowly turn on the bedroom lights (device: bedroom_light,
+          capability: brightness).
+
+      2.  Set the thermostat to 70°F (device: thermostat, capability:
+          set_temperature).
+
+
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 5]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+      3.  Start the coffee maker (device: coffee_maker, capability:
+          on_off).
+
+   *  *Authorization Requirements:*
+
+      -  *Persistent Delegation:* After a one-time setup, the agent must
+         be able to perform these actions daily without Bob's
+         intervention.
+
+      -  *Fine-Grained Device & Capability Permissions:* The agent
+         should be authorized to control the brightness of the
+         bedroom_light, but not, for example, to unlock the front_door.
+
+      -  *Conditional or Event-Driven Authorization:* The permissions
+         should only be usable when specific conditions are met (e.g.,
+         time=7AM AND day=weekday).
+
+      -  *Bulk Revocation:* When Bob sells his house, he needs a simple
+         way to revoke all permissions for all devices from his home hub
+         with a single action.
+
+   *  *Gap Analysis:*
+
+      -  *What Works (Partially):* Refresh Tokens are well-suited for
+         persistent delegation.  Scopes can be defined with high
+         granularity (e.g., device:bedroom_light:brightness).
+
+      -  *What's Missing (The Gap):*
+
+         o  *"Scope Explosion" and Usability:* In a home with hundreds
+            of devices and capabilities, presenting the user with a list
+            of thousands of scopes to approve is unmanageable.  The
+            OAuth consent screen was not designed for this scale.
+
+         o  *No Standardized Policy Enforcement:* OAuth grants _what_ an
+            agent can do, but not _when_ or _under what conditions_. The
+            logic to enforce time=7AM is outside the protocol and must
+            be custom-built into the agent or the device's resource
+            server, leading to inconsistent and non-interoperable
+            implementations.
+
+         o  *No Standardized Bulk Revocation:* [RFC7009] is for revoking
+            one token at a time.  There is no standard API to "revoke
+            all tokens for user Bob" or "revoke all tokens issued to the
+            home hub client."  This is a critical administrative and
+            security gap, forcing reliance on proprietary AS-specific
+            APIs.
+
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 6]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+3.2.  Category 2: Enterprise & Business Process Scenarios
+
+3.2.1.  Use Case 3: Complex Business Process Automation
+
+   *  *Scenario Description:* A task is passed through a chain of
+      specialized agents, each performing one step of a larger business
+      process.
+
+   *  *Example:* An automated insurance claim process:
+
+      1.  *Agent A (Intake):* Receives a claim from a customer and is
+          authorized to read the customer's policy.  It passes the claim
+          to the next agent.
+
+      2.  *Agent B (Verification):* Receives the claim from Agent A.  It
+          is authorized to access external databases to verify the
+          details of the incident.  It then passes the verified claim to
+          Agent C.
+
+      3.  *Agent C (Adjudication):* Receives the verified claim from
+          Agent B.  It is authorized to run a risk assessment and
+          approve or deny the claim.  If approved, it delegates the
+          final action to Agent D.
+
+      4.  *Agent D (Payment):* Receives the approved claim from Agent C.
+          It is authorized _only_ to execute a payment to the customer's
+          bank account for the approved amount.
+
+   *  *Authorization Requirements:*
+
+      -  *Verifiable Delegation Chain:* The final agent (Payment Agent
+         D) and the resource server (the bank's API) must be able to
+         cryptographically verify the entire authorization path:
+         Customer -> Agent A -> Agent B -> Agent C -> Agent D.
+
+      -  *Principle of Least Privilege at Each Step:* Agent B should
+         have no payment authority, and Agent D should have no access to
+         the customer's policy details.  The permissions must be
+         strictly constrained at each step in the chain.
+
+      -  *Auditable Context:* The entire process must be tied to a
+         single, auditable claim_id that is securely passed along the
+         chain.
+
+   *  *Gap Analysis:*
+
+
+
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 7]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+      -  *What Works (Partially):* OAuth 2.0 Token Exchange [RFC8693]
+         introduces the act (actor) claim, which provides a primitive to
+         show that one agent is acting on behalf of another.  This is a
+         foundational building block.
+
+      -  *What's Missing (The Gap):*
+
+         o  *No Native Support for Chains:* A standard OAuth token
+            represents a simple, two-party delegation (User -> Agent A).
+            It cannot natively represent a multi-step chain (User -> A
+            -> B -> C).  While the act claim from [RFC8693] helps, there
+            is no standard for how to nest these claims to create a
+            verifiable, multi-hop chain.  This is a major architectural
+            gap.
+
+         o  *Lack of Standardized Context Passing:* There is no standard
+            field in an OAuth token to carry the claim_id securely
+            through the process.  Developers resort to custom claims in
+            a JWT, which harms interoperability.
+
+3.3.  Category 3: Security & Administrative Scenarios
+
+3.3.1.  Use Case 4: Automated Security Incident Response
+
+   *  *Scenario Description:* A security agent detects a security threat
+      and must take immediate, automated action to contain it.
+
+   *  *Example:* A security system detects that an employee's laptop has
+      been compromised by malware.  An automated security agent is
+      triggered to:
+
+      1.  Immediately revoke all active login sessions for that employee
+          across all company applications (e.g., email, code repository,
+          HR system).
+
+      2.  Isolate the compromised laptop from the corporate network.
+
+      3.  Temporarily suspend the user's account to prevent further
+          unauthorized access.
+
+   *  *Authorization Requirements:*
+
+      -  *Privileged, System-Level Authority:* The security agent needs
+         broad, pre-approved authority to perform high-impact
+         administrative actions.
+
+
+
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 8]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+      -  *Global Token Revocation API:* The agent must be able to make a
+         single API call to the Authorization Server to "immediately
+         revoke all access and refresh tokens associated with user ID
+         employee-123."
+
+   *  *Gap Analysis:*
+
+      -  *What Works (Partially):* The OAuth Client Credentials grant is
+         suitable for giving the security agent its own system-level
+         identity and authority.
+
+      -  *What's Missing (The Gap):*
+
+         o  *Critically Inadequate Revocation API:* This is the most
+            significant gap for this use case.  The one-token-at-a-time
+            revocation endpoint in [RFC7009] is completely insufficient
+            for a security incident.  The need to make potentially
+            thousands of individual API calls to revoke tokens is too
+            slow and unreliable during an active attack.  The lack of a
+            standardized bulk revocation API is a major operational and
+            security failure point.
+
+4.  Summary of Major Gaps
+
+   The use cases above highlight several fundamental gaps between the
+   needs of AI agents and the capabilities of the standard OAuth 2.x
+   framework:
+
+   1.  *From 'Pre-Approval' to 'Continuous Dialogue': A Paradigm Shift.*
+       OAuth's model is to get all permissions upfront.  Agents need a
+       continuous, interactive authorization model where permissions are
+       granted dynamically and just-in-time as a task evolves from a
+       high-level intent.
+
+   2.  *Lack of a Standardized Interactive Channel.* The framework has
+       no built-in mechanism for an agent to "pause" and securely ask
+       the user for an intermediate decision or to respond to a real-
+       time authorization challenge from a resource server.
+
+   3.  *Inability to Represent Delegation Chains.* Standard tokens
+       cannot securely represent a multi-step delegation chain (User ->
+       Agent A -> Agent B).  This is a critical blocker for automating
+       complex, multi-agent business processes.
+
+   4.  *Insufficient Revocation Mechanisms.* The single-token revocation
+       API is inadequate.  The lack of standardized APIs for task-level
+       and bulk (per-user or per-client) revocation is a major
+       operational and security deficiency.
+
+
+
+Chen & Chen              Expires 1 January 2027                 [Page 9]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+5.  Security Considerations
+
+   As we design new authorization mechanisms for agents, security must
+   be the primary concern.  The autonomy of agents amplifies the risk of
+   any vulnerability.
+
+   *  *Risk of Over-Privileging:* The current lack of dynamic
+      authorization tempts developers to request broad, long-lived
+      permissions ("god tokens"), dramatically increasing the damage if
+      an agent is compromised.  Future solutions must make it easy to
+      follow the Principle of Least Privilege.
+
+   *  *Delegation Chain Vulnerabilities:* Without a standard for secure
+      delegation chains, custom implementations are prone to "Confused
+      Deputy" attacks, where an agent is tricked into misusing its
+      authority.
+
+   *  *Revocation Timeliness:* In a world of powerful, autonomous
+      agents, the ability to instantly and completely revoke all
+      permissions for a compromised user or agent is not a "nice-to-
+      have"; it is an absolute necessity.
+
+   *  *Non-Repudiation:* For enterprise and B2B scenarios, actions taken
+      by agents must be cryptographically auditable and non-repudiable,
+      creating a strong digital paper trail.
+
+6.  IANA Considerations
+
+   This document has no IANA actions.
+
+7.  Acknowledgements
+
+   The analysis and use cases in this document are derived from
+   observations of emerging AI agent technologies and their application
+   trends across various industries.  Thanks are due to the OAuth
+   community for their past and ongoing efforts in building a secure and
+   interoperable authorization framework, upon which this work is built.
+
+8.  Informative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+
+
+Chen & Chen              Expires 1 January 2027                [Page 10]
+
+Internet-Draft           Authorization use cases               June 2026
+
+
+   [RFC7009]  Lodderstedt, T., Ed., Dronia, S., and M. Scurtescu, "OAuth
+              2.0 Token Revocation", RFC 7009, DOI 10.17487/RFC7009,
+              August 2013, <https://www.rfc-editor.org/rfc/rfc7009>.
+
+   [RFC6749]  Hardt, D., Ed., "The OAuth 2.0 Authorization Framework",
+              RFC 6749, DOI 10.17487/RFC6749, October 2012,
+              <https://www.rfc-editor.org/rfc/rfc6749>.
+
+Appendix A.  References
+
+   [RFC6749]  Hardt, J., Ed., "The OAuth 2.0 Authorization Framework",
+      RFC 6749, DOI 10.17487/RFC6749, October 2012, https://www.rfc-
+      editor.org/info/rfc6749 (https://www.rfc-editor.org/info/rfc6749).
+
+   [RFC7009]  Lodderstedt, T., Ed., Dronia, S., and M.  Scurtescu,
+      "OAuth 2.0 Token Revocation", RFC 7009, DOI 10.17487/RFC7009,
+      August 2013, https://www.rfc-editor.org/info/rfc7009
+      (https://www.rfc-editor.org/info/rfc7009).
+
+   [RFC8693]  Jones, M., Nadalin, A., Campbell, B., Ed., Bradley, J.,
+      and C.  Mortimore, "OAuth 2.0 Token Exchange", RFC 8693, DOI
+      10.17487/RFC8693, January 2020, https://www.rfc-editor.org/info/
+      rfc8693 (https://www.rfc-editor.org/info/rfc8693).
+
+Authors' Addresses
+
+   Meiling Chen
+   China Mobile
+   BeiJing
+   China
+   Email: chenmeiling@chinamobile.com
+
+
+   Jia Chen
+   China Mobile
+   BeiJing
+   China
+   Email: chenjia@chinamobile.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+Chen & Chen              Expires 1 January 2027                [Page 11]

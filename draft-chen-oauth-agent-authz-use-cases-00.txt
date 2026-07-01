@@ -4,7 +4,7 @@
 
 OAuth Working Group                                              M. Chen
 Internet-Draft                                                   J. Chen
-Intended status: Standards Track                            China Mobile
+Intended status: Informational                              China Mobile
 Expires: 1 January 2027                                     30 June 2026
 
 

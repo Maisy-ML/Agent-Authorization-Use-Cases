@@ -32,7 +32,12 @@ author:
   city: BeiJing
   country: China
   email: chenjia@chinamobile.com
-
+- name: Jiankang Yao
+  org: CNNIC
+  city: BeiJing
+  country: China
+  email: yaojk@cnnic.cn
+  
 informative:
   RFC2119:
   RFC8174:
@@ -204,9 +209,32 @@ This section explores different categories of use cases, providing a concrete ex
         *   **No Native Support for Chains:** A standard OAuth token represents a simple, two-party delegation (User -> Agent A). It cannot natively represent a multi-step chain (`User -> A -> B -> C`). While the `act` claim from [RFC8693] helps, there is no standard for how to nest these claims to create a verifiable, multi-hop chain. This is a major architectural gap.
         *   **Lack of Standardized Context Passing:** There is no standard field in an OAuth token to carry the `claim_id` securely through the process. Developers resort to custom claims in a JWT, which harms interoperability.
 
+### Use Case 6: Automated DNSSEC DS Record Maintenance Agent
+
+*   **Scenario Description:** This case follows the multi-agent RRR (Registrant-Registrar-Registry) model defined in `draft-ietf-dnsop-ds-automation-09`. A corporate domain owner deploys chained agents to fully automate DS record updates during DNSSEC KSK rollovers, zone bootstrapping, and zone deletion, relying on CDS/CDNSKEY signals between child authoritative zones and parent registry systems.
+
+*   **Example:** The whole workflow runs unattended under a one-time delegated permission from the domain registrant, forming a delegation chain: **Registrant --> Registrar Agent --> Registry Agent.**
+    - **Zone Agent:** Publishes consistent CDS/CDNSKEY records on all name servers after key rollover.
+    - **Registrar Agent:** Pulls and validates CDS data, forwards DS update requests to the registry.
+    - **Registry Agent:** Applies DS records to the parent zone and sends operation notifications.
+
+*   **Authorization Requirements:**
+    - Cryptographically verifiable multi-hop delegation chain for a full audit trail.
+    - Fine-grained permission limited to a fixed set of domains, only allowing DS updating without modifying other DNS records.
+    - Support task-specific revocation: revoke all DS automation permissions without affecting other agent workflows.
+    - Standard audit context identifier passed across all agent hops for compliance logging.
+
+*   **Gap Analysis:**
+    *   **What Works (Partially):** Client Credentials can assign identities to registry/registrar agents. RFC 8693 token exchange supports simple single-hop agent delegation.
+
+    *   **What's Missing (The Gap)
+        *   **Current DS automation does not use OAuth. OAuth only supports two-party delegation and lacks standard multi-hop RRR delegation syntax; proprietary JWT claims hurt interoperability.
+        *   **OAuth has no standardized task/bulk revocation. Securing DS automation via OAuth would require repetitive single-token revocation in incidents.
+        *   **No reserved OAuth JWT claim for cross-agent audit IDs, breaking consistent compliance logging for DS automation.
+
 ## Category 3: Security & Administrative Scenarios
 
-### Use Case 6: Automated Security Incident Response
+### Use Case 7: Automated Security Incident Response
 
 *   **Scenario Description:** A security agent detects a security threat and must take immediate, automated action to contain it.
 

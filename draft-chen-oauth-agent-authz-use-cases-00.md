@@ -158,13 +158,17 @@ This section explores different categories of use cases, providing a concrete ex
 
 *   **Scenario Description:** A user authorizes an agent to use a third-party service on their behalf. The service, however, was designed for human interaction and has no built-in awareness of automated agents, leading to potential misuse or policy violations.
 
-*   **Example:**  Charlie authorizes his personal research assistant agent to use his subscription to an academic paper database. The agent, acting as Charlie, begins downloading hundreds of papers for a literature review. The database service detects this high-frequency activity, flags it as a potential DDoS attack or data scraping, and temporarily locks Charlie's account, disrupting both the agent's task and Charlie's own access.
+*   **Example1:**  Charlie authorizes his personal research assistant agent to use his subscription to an academic paper database. The agent, acting as Charlie, begins downloading hundreds of papers for a literature review. The database service detects this high-frequency activity, flags it as a potential DDoS attack or data scraping, and temporarily locks Charlie's account, disrupting both the agent's task and Charlie's own access.
+*   **Example2:** The database service later adds its own built-in AI features: an AI summarizer that processes users' saved papers. Charlie now faces three distinct classes of caller against the same API surface: his own interactive sessions, the service's built-in AI, and his external research agent. He may be comfortable with the built-in summarizer processing his library but not an external agent, or the reverse. His consent decision for one class says nothing about the others.
     
 
 *   **Authorization Requirements:**
     *   **Agent-User Differentiation:** : The third-party service must be able to reliably distinguish between requests coming directly from Charlie and requests made by his agent.
     *   **Agent-Specific Policies:** The service needs a way to apply different policies (e.g., stricter rate limits, restricted API access) to the agent without impacting the human user's normal access rights.
     *   **Delegated Authority with Constraints:** The authorization given to the agent should be a constrained subset of the user's full permissions (e.g., "can search and download, but no more than 100 papers per hour").
+    *   **Caller-Class Differentiation:** Beyond distinguishing the agent from its user, the service must be able to distinguish among classes of caller (at minimum the interactive human session, the application's own platform-native AI, and external user-delegated agents) in a way the caller cannot self-select.
+    *   **Independent Per-Class Consent:** The user must be able to grant or deny consent for each caller class independently, with no inheritance between classes: consent for one class must not imply consent for any other.
+    *   **An Attachment Point for Internal-AI Consent:** The application's own AI features typically never traverse the authorization layer at all, so there is currently nothing to attach a consent decision to for that class.
 
 *   **Gap Analysis:**
     *   **What (partially) works:**  OAuth allows a user to delegate access to a client (the agent). The scope parameter can limit which APIs the agent can call.
@@ -174,7 +178,8 @@ This section explores different categories of use cases, providing a concrete ex
         *   **No Standard Agent Identifier:** There is no standard OAuth claim or parameter that explicitly signals "this request is from an automated agent." Resource servers are left to guess based on non-standard signals like User-Agent strings or unusual traffic patterns.
         *   **Inability to Express Constraints:** The standard `scope` mechanism is binary (permission is granted or not). It cannot express or enforce nuanced constraints like rate limits, data volume caps, or time-of-day restrictions as part of the authorization grant itself.
         *   **Confused Deputy Risk:** Without clear differentiation, the service provider cannot tell if high-volume activity is malicious (account takeover) or a legitimate but overly aggressive agent. Their only recourse is often to block the user's account entirely.
- 
+        *   **No Standard Caller-Class Representation:** Beyond the human-versus-agent distinction, there is no standard representation of a caller class, and no standard way to express consent that is evaluated per class without inheritance between classes.
+        *   **Internal AI Is Invisible to Authorization:** Because the platform's own AI typically operates inside the application boundary, no standard consent mechanism applies to it at all, leaving users no way to express "external agents I delegate may process my data, but the platform's AI may not," or the reverse.
 
 ### Use Case 4: Agent as User's Proxy to Access Operating System Resources
 

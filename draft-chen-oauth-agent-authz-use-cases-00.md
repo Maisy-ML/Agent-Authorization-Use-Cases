@@ -194,6 +194,28 @@ This section explores different categories of use cases, providing a concrete ex
         *   **Lack of a Standard Bridge:** There is no standard protocol to connect an agent's high-level intent (often determined in the cloud) to a secure, fine-grained grant of local OS permissions on the device.
         *   **Over-Privileging by Default:** Due to the lack of a standard bridge, developers often resort to a dangerous workaround: the agent's local component is installed with broad, persistent permissions (e.g., running with the user's full rights or even as a system service). This completely bypasses the principle of least privilege and creates a significant security risk.
 
+### Use Case 5: First Connection to a Service with No Authorization Front Channel
+
+*   **Scenario Description:** Scenario Description: A user wants their agent to access a service that has no authorization server relationship, its own or a delegated one, and exposes no browser-facing authorization endpoint. The agent runs in a headless or remote environment with no co-located browser. Neither side can present the front channel that existing flows assume.
+
+*   **Example:** Dana subscribes to a note-taking service that exposes a plain REST API with no authorization server and no browser-facing authorization endpoint, as is common for services and MCP servers that predate or do not implement an authorization framework. She wants her personal assistant agent, which runs on a cloud host, to file notes for her. To make the first connection, Dana needs to:
+1. Grant the agent scoped access (notes.write, but not account.manage).
+2. Set a lifetime for that access and retain the ability to revoke it.
+3. Get the resulting credential to the agent, which has no browser and cannot complete a redirect-based flow.
+
+Today her only practical option is to copy a static API key into the agent's environment variables: long-lived, all-or-nothing, and invisible to her after setup.
+
+*   **Authorization Requirements:**
+    *   **Front-Channel-Free Bootstrapping:** The first-connection grant must be possible when neither the service nor the agent can present a browser-based interaction channel.
+    *   **User-Authored Grant:** The user, not the agent, needs a way to initiate the grant and set its scopes and lifetime, since there is no authorization request for the agent to redirect her to.
+    *   **Scoped, Revocable Credential:** The resulting credential must carry a constrained scope and lifetime and remain revocable by the user, in contrast to the static API key it replaces.
+
+*   **Gap Analysis:**
+    *   **What Works (Partially):** The Device Authorization Grant [RFC8628] removes the co-located browser requirement on the client side. Static API keys work operationally, which is why they are the de facto practice.
+    *   **What's Missing (The Gap):**
+    *   **A verification page is still assumed:** [RFC8628] presumes an authorization server with a browser-facing verification page, and the client initiates the request and proposes the scopes. It does not cover the case where no such page exists because the service has no front channel at all.
+    *   **No standard first-connection grant:** There is no standardized way for the user to grant scoped, revocable access and for the agent to obtain the resulting credential when no front channel exists on either side. This precedes the flows in the existing use cases; Use Case 1's gap analysis, for example, notes that the Authorization Code flow can obtain the initial permissions, which assumes that front channel is available.
+    *   **The workaround is the anti-pattern:** Environment-variable API keys are long-lived, over-broad, and invisible to the user after setup; these are the same over-privileging properties Section 5 warns against.
 
 ## Category 2: Enterprise & Business Process Scenarios
 

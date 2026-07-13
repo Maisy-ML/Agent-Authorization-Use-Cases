@@ -355,6 +355,7 @@ As we design new authorization mechanisms for agents, security must be the prima
 *   **Revocation Timeliness:** In a world of powerful, autonomous agents, the ability to instantly and completely revoke all permissions for a compromised user or agent is not a "nice-to-have"; it is an absolute necessity.
 *   **Non-Repudiation:** For enterprise and B2B scenarios, actions taken by agents must be cryptographically auditable and non-repudiable, creating a strong digital paper trail.
 *   **Coordinator as a Single Point of Authority:** In coordinated task groups, the leading agent both requests authorization on behalf of all members and assigns their tasks. If the coordinator is compromised, the blast radius covers the entire group; its authority to act as an applier for others must therefore be separately authenticated, authorized, and auditable.
+*   **Agent-Operable Consent Surfaces:** AI agents can click "Approve" buttons themselves, so a simple click is no longer proof of human consent. We need approval methods that agents can't fake, like a confirmation on your phone or a fingerprint scan.
 
 # IANA Considerations
 

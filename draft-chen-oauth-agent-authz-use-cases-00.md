@@ -48,6 +48,7 @@ informative:
   RFC8174:
   RFC7009:
   RFC6749:
+  RFC7523:
   RFC8693:
   RFC9396:
   I-D.song-oauth-ai-agent-collaborate-authz:

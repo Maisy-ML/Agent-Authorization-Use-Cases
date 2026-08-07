@@ -242,6 +242,7 @@ Today her only practical option is to copy a static API key into the agent's env
     *   **Verifiable Delegation Chain:** The final agent (Payment Agent D) and the resource server (the bank's API) must be able to cryptographically verify the entire authorization path: `Customer -> Agent A -> Agent B -> Agent C -> Agent D`.
     *   **Principle of Least Privilege at Each Step:** Agent B should have no payment authority, and Agent D should have no access to the customer's policy details. The permissions must be strictly constrained at each step in the chain.
     *   **Auditable Context:** The entire process must be tied to a single, auditable `claim_id` that is securely passed along the chain.
+    *   **Data Subject:** Where an agent accesses data describing a Data Subject who is not the Resource Owner, the authorization evidence MUST make the third-party access legible as such, and the catalogue MUST name whose authority permits it.
 
 *   **Gap Analysis:**
     *   **What Works (Partially):** OAuth 2.0 Token Exchange [RFC8693] introduces the `act` (actor) claim, which provides a primitive to show that one agent is acting on behalf of another. This is a foundational building block.

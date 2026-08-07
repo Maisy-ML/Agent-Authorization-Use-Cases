@@ -94,6 +94,9 @@ In addition to the terms defined in [RFC6749], this document uses the following 
 **Resource Server (RS):**
 : The server hosting the protected resources, capable of accepting and responding to protected resource requests using access tokens. Conforms to the definition in [RFC6749].
 
+**Data Subject:**
+: A natural person whom accessed data describes, and who is neither the Resource Owner nor a party to the authorization exchange.
+
 **Delegation Chain:**
 : A sequence of delegation events, where one actor grants a subset of its authority to another. For example: User -> Agent A -> Agent B.
 

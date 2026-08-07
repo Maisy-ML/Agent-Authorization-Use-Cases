@@ -6,7 +6,7 @@ submissiontype: IETF
 area: Security
 wg: OAuth Working Group
 
-docname: draft-chen-oauth-agent-authz-use-cases-00
+docname: draft-chen-oauth-agent-authz-use-cases-01
 
 title: Agent Authorization use cases and gap analysis
 abbrev: Authorization use cases

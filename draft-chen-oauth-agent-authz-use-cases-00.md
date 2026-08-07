@@ -116,24 +116,27 @@ This section explores different categories of use cases, providing a concrete ex
 
 *   **Scenario Description:** A user gives a high-level, natural language command to their AI assistant. The assistant must decompose this command into multiple steps and interact with various services to fulfill the request.
 
-*   **Example:** Alice tells her AI assistant, *"Help me plan a picnic for this Saturday."* The assistant needs to:
-    1.  Check Alice's calendar for availability (requires `calendar.read`).
-    2.  Check the weather forecast for Saturday (requires `weather.read`).
-    3.  If the weather is good, suggest nearby parks (requires `maps.search`).
-    4.  After Alice chooses a park, book a picnic spot if required (requires `parks.book`).
-    5.  Finally, add the event to Alice's calendar (requires `calendar.write`).
+*   **Example:** On Monday morning, Alice tells her AI assistant, "Help me plan a picnic for this Saturday." The assistant begins its work autonomously:
+    1.  It first checks Alice's calendar for availability (requires `calendar.read`).
+    2.  It then checks the weather forecast for Saturday (requires `weather.read`).
+    3.  Seeing the weather is good, it spends some time researching nearby parks based on Alice's past preferences (requires `maps.search`and profile access).
+    4.  On Tuesday afternoon, after identifying the perfect spot, the assistant determines it needs final authorization to book the picnic spot (requires parks.book) and add the event to Alice's calendar (requires calendar.write).
+*   The assistant now presents an authorization request to Alice.
 
-*   **Authorization Requirements:**
-    *   **Intent-to-Permission Translation:** The system must translate the high-level intent ("plan a picnic") into a series of specific, just-in-time permission requests.
-    *   **Interactive, Multi-Step Consent:** The agent needs to "talk back" to the user for intermediate decisions (e.g., "The weather looks great! I found three parks nearby. Which one do you prefer?"). Authorization for the next step (booking) should only be granted after the user's choice.
-    *   **Task-Level Revocation:** Alice should be able to say, *"Cancel the picnic planning,"* and have all permissions related to this specific task instantly revoked, without affecting other tasks the agent might be performing.
+*   **Challenge: Context Collapse and the Erosion of Informed Consent:**
+*   This scenario highlights a fundamental challenge to the traditional OAuth 2.0 model, which stems from the temporal decoupling of task initiation and authorization.
+    *   **Context Collapse:** The authorization request Alice receives on Tuesday afternoon is a simple prompt listing scopes like parks.book and calendar.write. The original context—the "picnic planning" instruction from the previous day—is lost. To Alice, the request is at best confusing ("Why does this app want to book a park now?") and at worst, indistinguishable from a sophisticated phishing attack. The traditional OAuth consent screen, designed for immediate, in-context requests, fails to provide the necessary assurance for the user to make a safe and informed decision.
+    *   **Inadequacy of Binary Choices:** Alice's only options are "Grant" or "Deny." However, her real question might be, "Which park did you choose?" or "Is there a fee?" The current framework provides no mechanism for this crucial dialogue. Denying the request causes the agent's task to fail, while granting it feels like signing a blank check.
+    *   **Task-Level Revocation:** Alice should be able to say, "Cancel the picnic planning," and have all permissions and pending actions related to this specific task instantly revoked, without affecting other tasks the agent might be performing.
 
 *   **Gap Analysis:**
-    *   **What Works (Partially):** The OAuth Authorization Code flow can be used to get the initial permissions (like `calendar.read`). Refresh Tokens can keep the agent's session alive.
+*   This use case does not imply that OAuth itself should be responsible for parsing user intent (the agent's job) or orchestrating the task (the agent framework's job). Instead, it reveals a critical gap in the authorization experience when interacting with autonomous systems.
+
+    *   **What Works (Partially):** The OAuth Authorization Code flow can be used to get initial permissions. Refresh Tokens can maintain the agent's session.
     *   **What's Missing (The Gap):**
-        *   **Fundamental Paradigm Mismatch:** OAuth is a **"pre-authorization"** model. It asks the user to approve a static list of scopes (`calendar.read`, `weather.read`, `maps.search`, etc.) all at once at the beginning. It cannot understand the *intent* ("plan a picnic") and dynamically grant permissions as the task unfolds. This is the core gap.
-        *   **No Standardized Interactive Flow:** There is no standard OAuth mechanism for an agent to "pause" a task, ask the user for a decision, and then use that decision to request a new, specific permission. This logic is currently left to complex, proprietary application-layer implementations.
-        *   **Impractical Revocation:** OAuth Token Revocation ([RFC7009]) revokes a single token. To achieve task-level revocation, the application would need to manage a complex mapping of tasks to tokens. There is no standard way to say "revoke everything related to 'picnic planning'."
+        *   **No Standard for Authorization Context:** The core gap is the lack of a standardized mechanism to carry the justification for the request from the agent to the user via the Authorization Server. OAuth's model, designed for immediate user-initiated flows, implicitly relies on the user's short-term memory to provide context. This assumption breaks down in agentic workflows. There is no standard way for the agent to pass a cryptographically verifiable "context object" (e.g., "This is for the picnic you requested on Monday") that the AS can present to the user.
+        *   **No Standardized Interactive Consent Flow:** There is no standard OAuth mechanism for an Authorization Server to facilitate a "clarification dialogue." The AS acts as a simple gatekeeper with a static grant/deny choice. It cannot "pause" the flow to allow the user to query the agent for more details (e.g., "Show me the park details") before consenting to the parks.book scope. This logic is currently left to complex, proprietary application-layer implementations.
+        *   **Impractical Task-Level Revocation:** OAuth Token Revocation ([RFC7009]) revokes a single token. To achieve task-level revocation, the application would need to build and maintain a complex, non-standard mapping of tasks to all associated tokens. There is no standard way to issue a single command like "revoke all tokens and authority related to 'picnic-task-123'."
 
 ### Use Case 2: Smart Home & Automation
 

@@ -341,6 +341,50 @@ Today her only practical option is to copy a static API key into the agent's env
     *   **What Works (Partially):** The OAuth Client Credentials grant is suitable for giving the security agent its own system-level identity and authority.
     *   **What's Missing (The Gap):**
         *   **Critically Inadequate Revocation API:** This is the most significant gap for this use case. The one-token-at-a-time revocation endpoint in [RFC7009] is completely insufficient for a security incident. The need to make potentially thousands of individual API calls to revoke tokens is too slow and unreliable during an active attack. The lack of a standardized bulk revocation API is a major operational and security failure point.
+
+#  Analysis of Existing OAuth Extensions
+
+The OAuth 2.0 ecosystem is rich with extensions designed to address security and functionality gaps in the core specification. However, many of these powerful extensions were conceived before the rise of highly autonomous, dynamic, and often ephemeral AI agents. Their design assumptions, therefore, do not always align with the unique challenges presented by agent-centric architectures.
+
+This section analyzes several key existing extensions and related concepts to evaluate their applicability to agent authorization use cases. For each, we identify its strengths, its limitations in agentic scenarios, and potential directions for evolution.
+
+## Rich Authorization Requests (RAR) [RFC9396]
+
+*   **Applicability and Strengths:** RAR represents a significant step beyond simple string-based scopes. It allows clients to request fine-grained, structured, and parameterized permissions. For example, instead of a generic `transaction` scope, a client can request authorization for a specific action like `{"type": "payment", "amount": "50", "currency": "USD", "recipient": "X"}`. This capability is invaluable for creating auditable and least-privilege grants, which is a core requirement for reining in agent capabilities.
+
+*   **Limitations in Agentic Scenarios:** The primary limitation of RAR in agentic scenarios is its static nature. RAR defines the *structure* of a permission, but it assumes the *values* are known at the time of the authorization request. Autonomous agents often operate with non-deterministic logic; they discover the need for specific actions as they execute a task. An agent planning a picnic might not know the exact cost or booking details for a park shelter until it has already completed several other steps. This makes it difficult to request all necessary, fine-grained permissions upfront.
+
+*   **Potential Directions for Evolution:** A potential direction is to evolve RAR or develop a complementary mechanism for "bounded capabilities". This would allow a user to grant an agent a budget or a set of constraints (e.g., "a maximum of $100 for picnic supplies within a 10-mile radius"). The agent could then use this grant to dynamically construct and justify specific RAR-formatted requests at runtime, with the authorization server validating each request against the pre-approved bounds.
+
+## Demonstrating Proof-of-Possession (DPoP) [RFC9449]
+
+*   **Applicability and Strengths:** DPoP enhances security by cryptographically binding access tokens to a specific client's public/private key pair. This effectively prevents token theft and replay attacks, as a stolen token is useless without the corresponding private key. This is a critical security baseline for any system where agents handle sensitive operations.
+
+*   **Limitations in Agentic Scenarios:** The challenge arises in highly dynamic agent architectures. DPoP's model assumes a relatively stable client with a persistent key. This assumption breaks down when a primary agent needs to delegate a task to a dynamically created, ephemeral sub-agent, or when an agent migrates between compute environments. Each new instance would require a new token bound to its new key, creating significant overhead and complexity if it requires a full round-trip to the authorization server.
+
+*   **Potential Directions for Evolution:** Future work could explore a "multi-hop DPoP" model. In this model, a parent agent holding a DPoP-bound token could securely derive a new, more constrained token for a sub-agent, binding it to the sub-agent's ephemeral key. This would create a verifiable chain of possession and delegation without requiring constant interaction with the central authorization server, making it more suitable for chained or group agent tasks.
+
+## Client-ID Metadata Document (CIMD) [draft-ietf-oauth-client-metadata]
+
+*   **Applicability and Strengths:** CIMD (and the broader concept of dynamic client registration) proposes a powerful shift from static, pre-registered clients to dynamic, discoverable ones. By defining `client_id` as a resolvable URI, an Authorization Server can fetch client metadata on-the-fly. This enables "plug-and-play" onboarding for new agents and greatly simplifies the lifecycle management of cryptographic keys by exposing them via a `jwks_uri`.
+
+*   **Limitations in Agentic Scenarios:** Despite its flexibility, CIMD's current metadata vocabulary is client-application-centric, not agent-centric.
+    1.  **Lack of Agent Context:** Standard fields (e.g., `redirect_uris`, `client_name`) fail to describe agent-specific attributes like its level of autonomy, risk profile, or operational policies.
+    2.  **Public URI Dependency:** The reliance on a stable, public URI is problematic for ephemeral or internal sub-agents that may not have a persistent, publicly resolvable address.
+    3.  **Missing Delegation Traceability:** While CIMD can verify an agent's identity, it does not provide a standard mechanism to describe its lineage or delegation path (i.e., "who created this agent?").
+
+*   **Potential Directions for Evolution:** To bridge these gaps, CIMD could be extended with:
+    1.  **Agent-Specific Metadata:** Introduce new fields like `agent_type`, `max_autonomous_budget`, or `human_in_the_loop_policy` to enable better risk assessment by Authorization Servers.
+    2.  **Inline or Vouched-For Metadata:** Allow ephemeral agents to present their metadata directly in a request or have it "vouched for" and signed by a trusted parent agent, removing the public URI requirement.
+    3.  **Trust Chain Assertions:** Incorporate fields like `parent_agent_id` or integrate concepts from specifications like OpenID Federation to build a verifiable delegation chain.
+
+## Transaction Tokens
+
+*   **Applicability and Strengths:** This refers to a common architectural pattern, often implemented using JWTs, where initial user context is encoded into a token and propagated through a series of internal microservices. This ensures consistent authorization and context within a trusted security domain.
+
+*   **Limitations in Agentic Scenarios:** The fundamental gap is one of trust boundaries. This pattern is designed for use within a single, trusted system. It is ill-suited for multi-hop delegation scenarios involving untrusted third-party agents, as the tokens lack standard mechanisms for permission attenuation (reduction) or enforcement across organizational boundaries.
+
+*   **Potential Directions for Evolution:** To be viable in agent ecosystems, this concept would need to evolve into a standardized "Attenuating Agent Token". Such a token would need a formal, interoperable mechanism for a parent agent to reduce permissions before passing it to a child agent, ensuring the child cannot exceed the parent's authority. Furthermore, embedding verifiable proofs of execution could enhance end-to-end auditability.
                  
 # Summary of Major Gaps
 

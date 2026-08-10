@@ -400,6 +400,8 @@ The use cases above highlight several fundamental gaps between the needs of AI a
 
 5.  **Authorization Is Modeled Per-Client, Not Per-Group.** OAuth has no notion of a set of clients acting as one task group under a single grant: no group membership representation, no admission of late-selected members, and no group-level lifecycle or atomic revocation.
 
+6.  **Verifiable Proof of Action for High-Risk Operations**: The framework provides robust mechanisms to verify the validity of an authorization grant (the permission to act), but lacks a standard for creating a durable, non-repudiable, and independently verifiable proof of the user's consent to the specific parameters of a high-risk action at the moment of execution.
+
 # Security Considerations
 
 As we design new authorization mechanisms for agents, security must be the primary concern. The autonomy of agents amplifies the risk of any vulnerability.

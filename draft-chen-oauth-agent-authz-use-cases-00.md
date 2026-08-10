@@ -137,6 +137,7 @@ This section explores different categories of use cases, providing a concrete ex
         *   **No Standard for Authorization Context:** The core gap is the lack of a standardized mechanism to carry the justification for the request from the agent to the user via the Authorization Server. OAuth's model, designed for immediate user-initiated flows, implicitly relies on the user's short-term memory to provide context. This assumption breaks down in agentic workflows. There is no standard way for the agent to pass a cryptographically verifiable "context object" (e.g., "This is for the picnic you requested on Monday") that the AS can present to the user.
         *   **No Standardized Interactive Consent Flow:** There is no standard OAuth mechanism for an Authorization Server to facilitate a "clarification dialogue." The AS acts as a simple gatekeeper with a static grant/deny choice. It cannot "pause" the flow to allow the user to query the agent for more details (e.g., "Show me the park details") before consenting to the parks.book scope. This logic is currently left to complex, proprietary application-layer implementations.
         *   **Impractical Task-Level Revocation:** OAuth Token Revocation ([RFC7009]) revokes a single token. To achieve task-level revocation, the application would need to build and maintain a complex, non-standard mapping of tasks to all associated tokens. There is no standard way to issue a single command like "revoke all tokens and authority related to 'picnic-task-123'."
+        *   **No Execution-Layer Evidence**: At the moment of financial commitment (the final "Book" step), a simple access token is insufficient. The core requirement is for **non-repudiable, execution-time evidence** that binds the user's explicit consent to the specific, critical parameters of the transaction (e.g., "Book picnic spot at 'Sunnyvale Park', cost $25"). This evidence serves as **proof of the human's decision at the moment of execution**, not just proof that the agent possessed a scoped token. It must be durable and verifiable for dispute resolution, proving *what* the user agreed to, not just that the agent had permission to book *something*.
 
 ### Use Case 2: Smart Home & Automation
 
@@ -246,6 +247,8 @@ Today her only practical option is to copy a static API key into the agent's env
     *   **Principle of Least Privilege at Each Step:** Agent B should have no payment authority, and Agent D should have no access to the customer's policy details. The permissions must be strictly constrained at each step in the chain.
     *   **Auditable Context:** The entire process must be tied to a single, auditable `claim_id` that is securely passed along the chain.
     *   **Data Subject:** Where an agent accesses data describing a Data Subject who is not the Resource Owner, the authorization evidence MUST make the third-party access legible as such, and the catalogue MUST name whose authority permits it.
+    *   **Execution Evidence for Final Action:** The final payment action by Agent D must not only be authorized by the delegation chain (grant-layer authority) but must also generate verifiable execution evidence. This evidence should bind the specific payment details (amount, recipient) to the full, verifiable delegation chain and the original claim_id, creating an undeniable record of the transaction's legitimacy.
+
 
 *   **Gap Analysis:**
     *   **What Works (Partially):** OAuth 2.0 Token Exchange [RFC8693] introduces the `act` (actor) claim, which provides a primitive to show that one agent is acting on behalf of another. This is a foundational building block.
@@ -336,11 +339,13 @@ Today her only practical option is to copy a static API key into the agent's env
 *   **Authorization Requirements:**
     *   **Privileged, System-Level Authority:** The security agent needs broad, pre-approved authority to perform high-impact administrative actions.
     *   **Global Token Revocation API:** The agent must be able to make a single API call to the Authorization Server to "immediately revoke all access and refresh tokens associated with user ID `employee-123`."
+    *   **Non-Repudiable Execution Evidence**: For post-hoc audits and security forensics, simply logging the action is insufficient. A critical requirement is the generation of **durable, non-repudiable, and potentially offline-verifiable evidence** at the moment of execution. This evidence must cryptographically attest to the specific action performed (e.g., "Agent `sec-ops-bot-01` isolated host `laptop-789` at `2024-08-21T10:00:00Z` under policy `POL-456` in response to alert `ALERT-XYZ`"). This formal proof is essential for accountability, especially when an automated agent takes high-risk actions like suspending a user account.
 
 *   **Gap Analysis:**
     *   **What Works (Partially):** The OAuth Client Credentials grant is suitable for giving the security agent its own system-level identity and authority.
     *   **What's Missing (The Gap):**
         *   **Critically Inadequate Revocation API:** This is the most significant gap for this use case. The one-token-at-a-time revocation endpoint in [RFC7009] is completely insufficient for a security incident. The need to make potentially thousands of individual API calls to revoke tokens is too slow and unreliable during an active attack. The lack of a standardized bulk revocation API is a major operational and security failure point.
+        *   **Absence of a Standard for Verifiable Action Records**: The OAuth framework focuses on granting and validating the *authority* to perform an action (i.e., possessing a valid token). It does not, however, define a standard mechanism for creating a **durable, cryptographically verifiable record of the action itself** at the moment of execution. In a security context, a simple log entry stating "action performed" is insufficient for high-stakes forensic analysis. What is missing is a formal, non-repudiable piece of evidence that binds the agent's identity, the specific action taken (e.g., "isolate host `laptop-789`"), the policy justification, and the timestamp into a single, verifiable artifact. This gap makes it difficult to construct an undeniable audit trail for automated, high-risk security operations.
 
 #  Analysis of Existing OAuth Extensions
 
@@ -400,7 +405,7 @@ The use cases above highlight several fundamental gaps between the needs of AI a
 
 5.  **Authorization Is Modeled Per-Client, Not Per-Group.** OAuth has no notion of a set of clients acting as one task group under a single grant: no group membership representation, no admission of late-selected members, and no group-level lifecycle or atomic revocation.
 
-6.  **Verifiable Proof of Action for High-Risk Operations**: The framework provides robust mechanisms to verify the validity of an authorization grant (the permission to act), but lacks a standard for creating a durable, non-repudiable, and independently verifiable proof of the user's consent to the specific parameters of a high-risk action at the moment of execution.
+6.  **Verifiable Proof of Action for High-Risk Operations**: The framework provides robust mechanisms to verify an agent's **authority to act** (the grant-layer), but lacks a standard for creating **evidence of the action itself** (the execution-layer). This gap is critical for high-risk operations, where a durable, non-repudiable proof of consent to specific parameters at the moment of execution is required for auditability and dispute resolution.
 
 # Security Considerations
 

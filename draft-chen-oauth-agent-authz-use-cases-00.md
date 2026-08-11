@@ -55,6 +55,7 @@ informative:
   I-D.ni-oauth-batch-authorization-delegation:
   I-D.ietf-oauth-identity-chaining:
   I-D.fletcher-transaction-token-chaining-profile:
+  I-D.yossif-agent-mandate-problem:
 
 
 --- abstract
@@ -138,6 +139,13 @@ This section explores different categories of use cases, providing a concrete ex
     *   **Inadequacy of Binary Choices:** Alice's only options are "Grant" or "Deny." However, her real question might be, "Which park did you choose?" or "Is there a fee?" The current framework provides no mechanism for this crucial dialogue. Denying the request causes the agent's task to fail, while granting it feels like signing a blank check.
     *   **Task-Level Revocation:** Alice should be able to say, "Cancel the picnic planning," and have all permissions and pending actions related to this specific task instantly revoked, without affecting other tasks the agent might be performing.
 
+*   **Authorization Requirements:**
+    *   **Authorization Context:** The authorization request should carry sufficient task and action context for the user to understand why the requested authority is needed.
+    *   **Task-Scoped Revocation:** The user should be able to revoke authority associated with a specific task without affecting unrelated tasks performed by the same agent.
+    *   **Pre-Authorized Constraints:** Structured constraints previously approved by the user should remain associated with subsequent actions so that compliance can be checked at execution time.
+    *   **Admission-to-Execution Binding:** When execution relies on an earlier admission based on originator authorization, applicable policy, or prior consent, the execution endpoint should be able to verify the admission basis and the scope and constraints attached to it.
+    *   **Action-Specific Approval:** When fresh user approval is required for a high-impact or irreversible action, the approval should be bound to the concrete action parameters and verified before the action takes effect.
+
 *   **Gap Analysis:**
 *   This use case does not imply that OAuth itself should be responsible for parsing user intent (the agent's job) or orchestrating the task (the agent framework's job). Instead, it reveals a critical gap in the authorization experience when interacting with autonomous systems.
 
@@ -146,7 +154,9 @@ This section explores different categories of use cases, providing a concrete ex
         *   **No Standard for Authorization Context:** The core gap is the lack of a standardized mechanism to carry the justification for the request from the agent to the user via the Authorization Server. OAuth's model, designed for immediate user-initiated flows, implicitly relies on the user's short-term memory to provide context. This assumption breaks down in agentic workflows. There is no standard way for the agent to pass a cryptographically verifiable "context object" (e.g., "This is for the picnic you requested on Monday") that the AS can present to the user.
         *   **No Standardized Interactive Consent Flow:** There is no standard OAuth mechanism for an Authorization Server to facilitate a "clarification dialogue." The AS acts as a simple gatekeeper with a static grant/deny choice. It cannot "pause" the flow to allow the user to query the agent for more details (e.g., "Show me the park details") before consenting to the parks.book scope. This logic is currently left to complex, proprietary application-layer implementations.
         *   **Impractical Task-Level Revocation:** OAuth Token Revocation ([RFC7009]) revokes a single token. To achieve task-level revocation, the application would need to build and maintain a complex, non-standard mapping of tasks to all associated tokens. There is no standard way to issue a single command like "revoke all tokens and authority related to 'picnic-task-123'."
-        *   **No Standard for Execution-Layer Evidence:** At the moment of financial commitment (the final "Book" step), a simple access token representing Grant-Layer Authority (e.g., a parks.book scope) is insufficient. The core requirement is for Execution-Layer Evidence: a non-repudiable, cryptographic proof that binds the user's explicit, real-time consent to the specific parameters of the transaction (e.g., "Book picnic spot at 'Sunnyvale Park', cost $25"). This evidence serves as proof of the human's decision at the moment of execution, proving what the user agreed to, not just that the agent possessed the authority to book something. The existing framework lacks a standard for generating or verifying such evidence.
+        *   **No Standard Binding of Pre-Authorized Constraints to Execution:** When the user has previously approved structured constraints on an action, existing grant-layer mechanisms do not provide a common way to bind those constraints to the concrete action performed later and verify that relationship at execution time. [I-D.yossif-agent-mandate-problem] states this T0-to-T1 constraint-binding problem and defines requirements without proposing a mechanism.
+        *   **No Standard Admission-to-Execution Binding:** When a request is admitted based on originator authorization, applicable policy, or prior consent rather than a fresh user decision, existing mechanisms do not define how the execution endpoint verifies that admission basis or ensures that the concrete action remains within the admitted scope and constraints.
+        *   **No Standard for Execution-Layer Evidence:** At the moment of financial commitment (the final "Book" step), a simple access token representing Grant-Layer Authority (e.g., a parks.book scope) is insufficient. The core requirement is for Execution-Layer Evidence: a non-repudiable, cryptographic proof that binds the user's explicit, real-time consent to the specific parameters of the transaction (e.g., "Book picnic spot at 'Sunnyvale Park', cost $25"). This evidence serves as proof of the human's decision at the moment of execution, proving what the user agreed to, not just that the agent possessed the authority to book something. The existing framework lacks a standard for generating or verifying such evidence. Where such evidence is required, it must be verified before the high-impact or irreversible effect is committed.
 
 ### Use Case 2: Smart Home & Automation
 
@@ -477,3 +487,6 @@ The analysis and use cases in this document are derived from observations of eme
 
 [I-D.fletcher-transaction-token-chaining-profile]
 : Fletcher, G., Kasselman, P., and S. O'Dell, "Transaction Token Authorization Grant Profile for OAuth Identity and Authorization Chaining", Work in Progress, Internet-Draft, draft-fletcher-transaction-token-chaining-profile-02, 6 July 2026, <https://datatracker.ietf.org/doc/html/draft-fletcher-transaction-token-chaining-profile-02>.
+
+[I-D.yossif-agent-mandate-problem]
+: Yossif, M., "Problem Statement: Verifiable Human Mandates for Autonomous Agent Actions", Work in Progress, Internet-Draft, draft-yossif-agent-mandate-problem-00, 22 July 2026, <https://datatracker.ietf.org/doc/html/draft-yossif-agent-mandate-problem-00>.

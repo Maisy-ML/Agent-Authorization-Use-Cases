@@ -129,11 +129,11 @@ The personal and consumer use cases share several recurring authorization requir
 
 | Requirement Theme | Use Cases and Forms |
 | ----------------- | ------------------- |
-| **Dynamic & Contextual Authorization** | **UC1:** Authorization request must carry task context to ensure informed consent; **UC2:** Authority is conditional on events or time (e.g., time=7AM); **UC4:** Just-in-time requests for elevated OS permissions. |
-| **Granular & Constrained Authority** | **UC1, UC3:** Delegation with user-defined constraints (e.g., spending limits); **UC2, UC4:** Fine-grained permissions for specific device capabilities or file paths; **UC3:** Application of agent-specific policies like rate limits; **UC5:** User-authored, scoped grants for headless services. |
-| **Differentiated Actor Identity** | **UC3:** Reliable distinction between a human user and their agent, distinction between different classes of automated callers (e.g., external agent vs. platform-native AI). |
-| **Task-Oriented Lifecycle Management** | **UC1, UC4:** Revocation of all authority tied to a specific task; **UC2:** Bulk revocation of all permissions for a client (e.g., home hub); **UC5:** Bootstrapping a revocable credential without a front channel. |
-| **Verifiable, Action-Specific Consent** | **UC1:** Binding user approval to the concrete parameters of a high-impact action at execution time (Execution-Layer Evidence). |
+| **Dynamic & Contextual Authorization** | **UC1:**  Authorization with task context; **UC2:** Conditional authority (based on event or time); **UC4:** Just-in-time permission requests. |
+| **Granular & Constrained Authority** | **UC1, UC3:** User-defined constraints (e.g., spending limits); **UC2, UC4:** Fine-grained permissions (for devices, files); **UC3:**  Agent-specific policies (e.g., rate limits); **UC5:** User-defined scopes for headless services.|
+| **Differentiated Actor Identity** | **UC3:** Distinguishing human vs agent, between different agent classes. |
+| **Task-Oriented Lifecycle Management** | **UC1, UC4:** Task-bound revocation.; **UC2:** Bulk client revocation; **UC5:** Headless bootstrapping of credentials.|
+| **Verifiable, Action-Specific Consent** | **UC1:** Approval of final action parameters at execution time. |
 
 The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as the architectural mismatch with local OS permissions in UC4 or the need for independent per-class consent in UC3.
 

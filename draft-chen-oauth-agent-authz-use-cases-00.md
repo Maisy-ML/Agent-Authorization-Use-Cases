@@ -330,10 +330,26 @@ Today her only practical option is to copy a static API key into the agent's env
          *   **Batched Authorization:** How to request access permissions to a batch of resources from the user at once, while precisely delegating fine-grained privileges to the respective sub-agent responsible for executing each sub-task.
          *   **Cross-domain Workflow:** How to request access permissions across different trust domains, while ensuring secure propagation of important contextual information (claims, caller identity, rich authorization contexts...).
 
+### Use Case 10: Cross-Organizational Delegation Between Fully-Provisioned Organizations
+
+*  **Scenario Description:** An agent operated by Organization A must invoke a service operated by Organization B. Each organization runs its own complete trust infrastructure: its own authorization server, identity provider, and workload identity systems. No trust relationship, federation agreement, key exchange, or communication channel exists between them before the first request, and none can be assumed: the interaction may be first contact. This is the ordinary condition of open agent-to-tool ecosystems (e.g., MCP tool servers, agent-mediated commerce) once agents cross organizational boundaries.
+
+*  **Example:** A manufacturer's procurement agent, acting on behalf of a named employee, invokes a supplier's quoting and ordering API. The supplier has never onboarded the manufacturer. At request time the supplier's service must determine: (a) that the calling agent is operated by an identifiable, accountable organization; (b) that the agent holds authority for this specific operation, delegated through possibly several intermediate agents, each of which may only have narrowed it; (c) that the agent acts on behalf of the claimed human principal; and (d) that none of that authority has been revoked - all within its normal request latency, and without a synchronous callback to the manufacturer's infrastructure, whose availability and reachability it does not control.
+
+*  **Authorization Requirements:**
+  *  **Stranger Verifiability:** The receiving organization must be able to verify authority rooted in the sending organization using generally available infrastructure that both parties joined independently, with no interaction-specific bilateral arrangement (no pre-exchanged keys, no shared authorization server, no federation onboarding step).
+  *  **Verifiable Attenuated Delegation:** Presented authority may have passed through multiple agents. Each hop may only narrow it (permitted operations, resource scope, validity), and the receiver must be able to verify both the narrowing and the invariance of the on-behalf-of principal from the presented material itself, rather than by trusting the sending organization's internal policy.
+  *  **Local Decision with Bounded Revocation Staleness:** The receiver's authorization decision must complete without a runtime call to the sending organization, while revocation of the sender's authority must still reach the receiver with an explicit, bounded staleness that the receiver can enforce and fail safe on.
+
+*   **Gap Analysis:**
+    *   **What's Missing (The Gap):**
+        *   **Pre-Established Trust Assumption:** Existing cross-domain mechanisms presuppose arranged trust. OAuth Identity Chaining, for example, requires the participating authorization servers to have pre-established trust and exchanged key material (Section 2.1) - precisely what a first-contact interaction lacks by definition.
+        *   **Runtime Coupling to Foreign Infrastructure:** Token-exchange and challenge-based patterns place the sending side's authorization server (or one federated with it) in the request path, making the availability, latency, and reachability of another organization's infrastructure a precondition for the receiver's own service.
+        *   **Delegation Opacity at the Receiver:** Standard access tokens do not allow a receiving organization to independently verify multi-hop narrowing or the invariance of the acting-for principal across intermediaries; the receiver is asked to trust issuer-side policy it cannot inspect.
 
 ## Category 3: Security & Administrative Scenarios
 
-### Use Case 10: Automated Security Incident Response
+### Use Case 11: Automated Security Incident Response
 
 *   **Scenario Description:** A security agent detects a security threat and must take immediate, automated action to contain it.
 

@@ -251,6 +251,20 @@ Today her only practical option is to copy a static API key into the agent's env
 
 ## Category 2: Enterprise & Business Process Scenarios
 
+### Authorization Requirement Summary
+
+The enterprise and business-process use cases share several recurring authorization requirements, although the form of each requirement depends on the workflow structure and trust boundaries involved.
+
+| Requirement Theme | Use Cases and Forms |
+| ----------------- | ------------------- |
+| **Constrained Delegated Authority** | **UC6:** least privilege at each step; **UC7:** authority partitioned by branch; **UC8:** domain- and operation-specific permissions; **UC9:** scoped delegation to sub-providers and tenants; **UC10:** attenuation at each delegation hop |
+| **Verifiable Delegation Provenance** | **UC6:** verification of the multi-hop authorization path; **UC8:** verification of the Registrant--Registrar--Registry delegation; **UC10:** verification of attenuated authority and the represented principal across organizations |
+| **Common Task Identifier Across Hops** | **UC6:** common `claim_id`; **UC8:** common audit context identifier across agent hops |
+| **Revocation & Authorization Lifecycle** | **UC7:** termination of task-group authority; **UC8:** task-specific revocation; **UC10:** revocation with bounded staleness |
+| **Cross-Domain Authorization** | **UC9:** authorization across sub-provider administrative domains; **UC10:** authorization between independently administered organizations |
+
+The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as data-subject authorization and execution-layer evidence in UC6, aggregate constraints and late-bound members in UC7, the standardized representation of a cross-agent audit identifier in UC8, batched authorization in UC9, and stranger verifiability in UC10.
+
 ### Use Case 6: Complex Business Process Automation
 
 *   **Scenario Description:** A task is passed through a chain of specialized agents, each performing one step of a larger business process.

@@ -52,6 +52,7 @@ informative:
   RFC8693:
   RFC9396:
   I-D.song-oauth-ai-agent-collaborate-authz:
+  I-D.ni-oauth-batch-authorization-delegation:
 
 
 --- abstract
@@ -242,6 +243,17 @@ Today her only practical option is to copy a static API key into the agent's env
 
 *   **Scenario Description:** A task is passed through a chain of specialized agents, each performing one step of a larger business process.
 
+Where a coordinator distributes work to several members and each
+member's authority is an independent attenuation of the coordinator's,
+the group topology does not change the authorization model: the
+pattern described in this section is applied once per branch.
+Mechanisms exist for both sides of this: a coordinator can obtain
+authorization for the members of a group without a separate exchange
+per member [I-D.song-oauth-ai-agent-collaborate-authz], and the
+permitted actor can be scoped per entry in `authorization_details`
+[I-D.ni-oauth-batch-authorization-delegation]. Such groups are
+therefore covered by this use case and are not treated separately.
+
 *   **Example:** An automated insurance claim process:
     1.  **Agent A (Intake):** Receives a claim from a customer and is authorized to read the customer's policy. It passes the claim to the next agent.
     2.  **Agent B (Verification):** Receives the claim from Agent A. It is authorized to access external databases to verify the details of the incident. It then passes the verified claim to Agent C.
@@ -264,7 +276,7 @@ Today her only practical option is to copy a static API key into the agent's env
 
 ### Use Case 7: Coordinated Task Group
 
-*   **Scenario Description:** A coordinating agent decomposes a user's request into subtasks and assembles a group of specialized sub-agents to execute them. Unlike the delegation chain in Use Case 5, where each agent derives its authority from the previous agent hop by hop, here every member's authority stems from a single grant obtained centrally by the coordinator [I-D.song-oauth-ai-agent-collaborate-authz]. The execution order of subtasks (sequential, parallel, or mixed) is independent of this authorization structure.
+*   **Scenario Description:** A coordinating agent decomposes a user's request into subtasks and assembles a group of specialized sub-agents to execute them. Unlike the delegation chain in Use Case 6, where each agent derives its authority from the previous agent hop by hop, here every member's authority stems from a single grant obtained centrally by the coordinator [I-D.song-oauth-ai-agent-collaborate-authz]. The execution order of subtasks (sequential, parallel, or mixed) is independent of this authorization structure.
 
 *   **Example1:** A user asks a health assistant for real-time health advice. A leading agent resolves the request into three subtasks: collecting the user's health data, predicting the user's health status, and generating advice. It selects a sub-agent for each subtask, each needing access to different resource servers (a wearable data API, a prediction service, a guideline repository). Sub-agents may all be selected upfront, or incrementally during execution as intermediate results reveal which further subtasks are needed.
 *   **Example2:** Cross-bank Coupon Agent of a leading payment company can coordinate multiple commercial banks' agents to compare the best promotional discount from all of the user's bank accounts for a single payment. It obtains a single batch authorization for query and payment permissions of all the user's bank accounts, then decomposes these permissions, restricting each sub-agent to query only its respective bank's promotional discounts.
@@ -273,14 +285,16 @@ Today her only practical option is to copy a static API key into the agent's env
 *   **Authorization Requirements:**
     *   **One Grant, Many Members:** The coordinator must be able to obtain authorization once, on behalf of the whole group, rather than each member running its own flow against the authorization server and the user.
     *   **Member-Level Least Privilege:** Each member must be confined to its own subject-audience-scope binding within the group's overall authority.
+    *   **Task-Level Aggregate Constraints:** Where the user's authorization expresses a quantity for the task as a whole -- a total spend, a total number of records, a cap on external operations -- that quantity is consumed jointly by the members. It is not the sum of per-member limits, and it cannot be partitioned at consent time, because the split between members is not known when consent is given. Members may transact with resource servers in separately administered domains, whose authorization servers cannot observe what other members have already consumed.
     *   **Late Binding of Members:** Members selected mid-execution must be able to receive authority under the existing grant without a full re-authorization round trip.
     *   **Group Lifecycle:** When the task completes or the coordinator is compromised, the entire group's authority must be terminable as one unit.
 
 *   **Gap Analysis:**
-    *   **What Works (Partially):** Token Exchange [RFC8693] defines the privilege delegation relationship via the `may_act` claim, but it only defines one actor and cannot link that actor to a specific subset of permissions. Rich Authorization Requests [RFC9396] can express fine-grained permissions per request，but cannot bind them to different actors. 
+    *   **What Works (Partially):** Token Exchange [RFC8693] defines the privilege delegation relationship via the `may_act` claim, but it only defines one actor and cannot link that actor to a specific subset of permissions. Rich Authorization Requests [RFC9396] can express fine-grained permissions per request, but cannot bind them to different actors. Work is under way to close this by scoping the permitted actor per entry in `authorization_details` [I-D.ni-oauth-batch-authorization-delegation].
     *   **What's Missing (The Gap):**
-        *   **Per-Member Authorization Does Not Scale:** N members individually authenticating and obtaining tokens for what is logically one user grant means N authorization server interactions and potentially N consent prompts for a single request. There is no standard way for one party to request authorization on behalf of an enumerated set of clients.
+        *   **No Request for an Enumerated Set of Clients:** There is no standard way for one party to request authorization on behalf of a set of clients under a single act of user consent. Absent this, N members obtain tokens for what is logically one user grant, leaving the user's consent fragmented across N authorizations that the token model does not relate to one another.
         *   **No Group Construct in the Token Model:** Tokens describe one client acting for one subject. There is no standard representation of group membership, nor of per-member subject-audience-scope bindings under a common grant, that a resource server could verify.
+        *   **No Shared Authorization State Across Members:** Per-member restriction constrains what each member may do; it does not express a quantity that the members consume jointly. Where one authorization server sees every member, such a constraint can be enforced as deployment-local accounting and needs no interoperable mechanism. Where members transact in separately administered domains, there is no standard way for independently issued tokens to reference the same task-level authorization state, nor for a relying party to determine that its authorization is subject to a constraint shared with delegations it did not issue and cannot enumerate.
         *   **No Late Binding of Members:** Members that cannot be enumerated at grant time have no standard way to be admitted to the group's authority, for example via a verifiable task assignment bound to the original grant.
         *   **No Group Lifecycle Management:** There is no standard way to terminate a group's authority atomically, nor an enforced rule that a member's effective permissions remain a subset of the group's.
 
@@ -448,6 +462,9 @@ The analysis and use cases in this document are derived from observations of eme
 
 [RFC9396]
 : Lodderstedt, T., Richer, J., and B. Campbell, "OAuth 2.0 Rich Authorization Requests", RFC 9396, DOI 10.17487/RFC9396, May 2023, <https://www.rfc-editor.org/info/rfc9396>.
+
+[I-D.ni-oauth-batch-authorization-delegation]
+: Ni, Y., "Batch Authorization Delegation for OAuth 2.0", Work in Progress, Internet-Draft, draft-ni-oauth-batch-authorization-delegation-00, <https://datatracker.ietf.org/doc/html/draft-ni-oauth-batch-authorization-delegation-00>.
 
 [I-D.song-oauth-ai-agent-collaborate-authz]
 : Song, Y., Li, L., Jiang, Y., and F. Liu, "OAuth2.0 Extension for Multi-AI Agent Collaboration", Work in Progress, Internet-Draft, draft-song-oauth-ai-agent-collaborate-authz-01, 28 February 2026, <https://datatracker.ietf.org/doc/html/draft-song-oauth-ai-agent-collaborate-authz-01>.

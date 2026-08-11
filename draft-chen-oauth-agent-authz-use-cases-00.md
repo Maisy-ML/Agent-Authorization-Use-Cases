@@ -52,6 +52,9 @@ informative:
   RFC8693:
   RFC9396:
   I-D.song-oauth-ai-agent-collaborate-authz:
+  I-D.ni-oauth-batch-authorization-delegation:
+  I-D.ietf-oauth-identity-chaining:
+  I-D.fletcher-transaction-token-chaining-profile:
 
 
 --- abstract
@@ -264,25 +267,23 @@ Today her only practical option is to copy a static API key into the agent's env
 
 ### Use Case 7: Coordinated Task Group
 
-*   **Scenario Description:** A coordinating agent decomposes a user's request into subtasks and assembles a group of specialized sub-agents to execute them. Unlike the delegation chain in Use Case 5, where each agent derives its authority from the previous agent hop by hop, here every member's authority stems from a single grant obtained centrally by the coordinator [I-D.song-oauth-ai-agent-collaborate-authz]. The execution order of subtasks (sequential, parallel, or mixed) is independent of this authorization structure.
+*   **Scenario Description:** A coordinating agent decomposes a user's request into subtasks and delegates them to multiple specialized agents. Unlike a delegation chain (Use Case 6), authorization in a task group may need to be partitioned across sibling branches, while some task-level constraints and lifecycle state remain shared across the group [I-D.song-oauth-ai-agent-collaborate-authz].
 
-*   **Example1:** A user asks a health assistant for real-time health advice. A leading agent resolves the request into three subtasks: collecting the user's health data, predicting the user's health status, and generating advice. It selects a sub-agent for each subtask, each needing access to different resource servers (a wearable data API, a prediction service, a guideline repository). Sub-agents may all be selected upfront, or incrementally during execution as intermediate results reveal which further subtasks are needed.
-*   **Example2:** Cross-bank Coupon Agent of a leading payment company can coordinate multiple commercial banks' agents to compare the best promotional discount from all of the user's bank accounts for a single payment. It obtains a single batch authorization for query and payment permissions of all the user's bank accounts, then decomposes these permissions, restricting each sub-agent to query only its respective bank's promotional discounts.
-
+*   **Example 1 -- Partitioned Authorization:** A payment assistant coordinates agents from multiple banks to compare promotional discounts for a payment. Each bank agent should receive only the permissions and authorization context required for its own bank. Permissions or sensitive context assigned to one branch should not automatically be available to another branch.
+*   **Example 2 -- Shared Task Constraint:** A user asks a travel assistant to arrange a business trip and authorizes a total spend of at most 100 units for the trip. The assistant delegates flight booking to a flight agent and hotel booking to a hotel agent operating in separately administered domains. The user has not fixed how the limit is divided between the two. Each delegated authorization may be valid independently, while their combined use may exceed the task-level limit.
+*   **Example 3 -- Late-Bound Members:** A health assistant decomposes a user's request into health-data collection, status prediction, and advice generation. Some sub-agents may be selected upfront, while others may be selected during execution as intermediate results determine which additional capabilities are needed.
 
 *   **Authorization Requirements:**
-    *   **One Grant, Many Members:** The coordinator must be able to obtain authorization once, on behalf of the whole group, rather than each member running its own flow against the authorization server and the user.
-    *   **Member-Level Least Privilege:** Each member must be confined to its own subject-audience-scope binding within the group's overall authority.
-    *   **Late Binding of Members:** Members selected mid-execution must be able to receive authority under the existing grant without a full re-authorization round trip.
-    *   **Group Lifecycle:** When the task completes or the coordinator is compromised, the entire group's authority must be terminable as one unit.
+    *   **Branch-Level Partitioning:** The authorization framework must support partitioning permissions and relevant authorization context among members according to their subtasks and resource domains.
+    *   **Task-Level Aggregate Constraints:** The authorization framework must support binding multiple delegation branches to constraints that apply to and are consumed by the task as a whole.
+    *   **Late Binding of Members:** Members selected during task execution must be able to obtain appropriately constrained authority under the existing task authorization.
+    *   **Group Lifecycle:** Authority associated with the task group must be able to be terminated as a unit when the task ends or its authorization is revoked.
 
 *   **Gap Analysis:**
-    *   **What Works (Partially):** Token Exchange [RFC8693] defines the privilege delegation relationship via the `may_act` claim, but it only defines one actor and cannot link that actor to a specific subset of permissions. Rich Authorization Requests [RFC9396] can express fine-grained permissions per request，but cannot bind them to different actors. 
+    *   **What Works (Partially):** Existing mechanisms address several parts of this problem. [I-D.song-oauth-ai-agent-collaborate-authz] considers centralized authorization for static and dynamic task groups. [I-D.ni-oauth-batch-authorization-delegation] allows a client to express how permissions and authorization context are partitioned across multiple actors in an authorization request, including scoping the permitted actor per `authorization_details` entry. Token Exchange [RFC8693], Identity Chaining [I-D.ietf-oauth-identity-chaining], and Transaction Token Chaining [I-D.fletcher-transaction-token-chaining-profile] provide building blocks for propagating delegated authority and context along individual delegation chains.
     *   **What's Missing (The Gap):**
-        *   **Per-Member Authorization Does Not Scale:** N members individually authenticating and obtaining tokens for what is logically one user grant means N authorization server interactions and potentially N consent prompts for a single request. There is no standard way for one party to request authorization on behalf of an enumerated set of clients.
-        *   **No Group Construct in the Token Model:** Tokens describe one client acting for one subject. There is no standard representation of group membership, nor of per-member subject-audience-scope bindings under a common grant, that a resource server could verify.
-        *   **No Late Binding of Members:** Members that cannot be enumerated at grant time have no standard way to be admitted to the group's authority, for example via a verifiable task assignment bound to the original grant.
-        *   **No Group Lifecycle Management:** There is no standard way to terminate a group's authority atomically, nor an enforced rule that a member's effective permissions remain a subset of the group's.
+        *   **No Common Task-Group Authorization Model:** Existing mechanisms can authorize or constrain individual members, but do not define a common interoperable binding that relates independently delegated authorities to the same task group, including late-bound members and a common lifecycle.
+        *   **No Shared Authorization State Across Branches:** Per-member partitioning does not address constraints consumed jointly by multiple branches. Across separately administered domains, there is no standard way for delegated authorizations to reference and consistently enforce the same task-level aggregate authorization state.
 
 ### Use Case 8: Automated DNSSEC DS Record Maintenance Agent
 
@@ -449,5 +450,14 @@ The analysis and use cases in this document are derived from observations of eme
 [RFC9396]
 : Lodderstedt, T., Richer, J., and B. Campbell, "OAuth 2.0 Rich Authorization Requests", RFC 9396, DOI 10.17487/RFC9396, May 2023, <https://www.rfc-editor.org/info/rfc9396>.
 
+[I-D.ni-oauth-batch-authorization-delegation]
+: Ni, Y., "Batch Authorization Delegation for OAuth 2.0", Work in Progress, Internet-Draft, draft-ni-oauth-batch-authorization-delegation-00, <https://datatracker.ietf.org/doc/html/draft-ni-oauth-batch-authorization-delegation-00>.
+
 [I-D.song-oauth-ai-agent-collaborate-authz]
 : Song, Y., Li, L., Jiang, Y., and F. Liu, "OAuth2.0 Extension for Multi-AI Agent Collaboration", Work in Progress, Internet-Draft, draft-song-oauth-ai-agent-collaborate-authz-01, 28 February 2026, <https://datatracker.ietf.org/doc/html/draft-song-oauth-ai-agent-collaborate-authz-01>.
+
+[I-D.ietf-oauth-identity-chaining]
+: Schwenkschuster, A., Kasselman, P., Burgin, K., Jenkins, M., Campbell, B., and A. Parecki, "OAuth Identity and Authorization Chaining Across Domains", Work in Progress, Internet-Draft, draft-ietf-oauth-identity-chaining-17, 19 July 2026, <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-chaining-17>.
+
+[I-D.fletcher-transaction-token-chaining-profile]
+: Fletcher, G., Kasselman, P., and S. O'Dell, "Transaction Token Authorization Grant Profile for OAuth Identity and Authorization Chaining", Work in Progress, Internet-Draft, draft-fletcher-transaction-token-chaining-profile-02, 6 July 2026, <https://datatracker.ietf.org/doc/html/draft-fletcher-transaction-token-chaining-profile-02>.

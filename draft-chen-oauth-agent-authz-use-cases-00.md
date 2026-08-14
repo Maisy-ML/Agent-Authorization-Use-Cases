@@ -490,6 +490,8 @@ This document has no IANA actions.
 
 The analysis and use cases in this document are derived from observations of emerging AI agent technologies and their application trends across various industries. Thanks are due to the OAuth community for their past and ongoing efforts in building a secure and interoperable authorization framework, upon which this work is built.
 
+The authors would like to thank Blake Morrison, Mohamad Khalil Yossif, niyuan, 	Christopher Emerson, morganLR,	Eric Leleu, Thi Nguyen-Huu and Jeff for commenting, contributing and providing feedback on this draft.
+
 --- back
 
 # References

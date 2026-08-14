@@ -215,8 +215,6 @@ The summary includes only authorization requirements that recur across multiple 
 
 *   **Gap Analysis:**
     *   **What (partially) works:**  OAuth allows a user to delegate access to a client (the agent). The scope parameter can limit which APIs the agent can call.
-    
-        *   **What Works (Partially):** OAuth allows a user to delegate access to a client (the agent). The `scope` parameter can limit which APIs the agent can call.
     *   **What's Missing (The Gap):**
         *   **No Standard Agent Identifier:** There is no standard OAuth claim or parameter that explicitly signals "this request is from an automated agent." Resource servers are left to guess based on non-standard signals like User-Agent strings or unusual traffic patterns.
         *   **Inability to Express Constraints:** The standard `scope` mechanism is binary (permission is granted or not). It cannot express or enforce nuanced constraints like rate limits, data volume caps, or time-of-day restrictions as part of the authorization grant itself.

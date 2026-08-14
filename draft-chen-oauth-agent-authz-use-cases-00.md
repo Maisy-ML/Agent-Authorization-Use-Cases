@@ -1,12 +1,12 @@
 ---
 stand_alone: true
 ipr: trust200902
-cat: std
+cat: info
 submissiontype: IETF
 area: Security
 wg: OAuth Working Group
 
-docname: draft-chen-oauth-agent-authz-use-cases-01
+docname: draft-chen-oauth-agent-authz-use-cases-03
 
 title: Agent Authorization use cases and gap analysis
 abbrev: Authorization use cases

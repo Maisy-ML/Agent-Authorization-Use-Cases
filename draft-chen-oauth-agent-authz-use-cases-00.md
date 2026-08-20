@@ -60,13 +60,13 @@ informative:
 
 --- abstract
 
-This document provides a systematic analysis of these emerging agent-based use cases. It categorizes them into distinct scenarios, details their specific authorization requirements, and performs a comprehensive gap analysis against the existing OAuth 2.0 framework [RFC6749] and its common extensions. The analysis identifies fundamental mismatches, the goal of this document is to articulate these gaps clearly, providing a foundation for future work on new extensions within the OAuth Working Group to address the authorization needs of the next generation of ai agents.
+This document provides a systematic analysis of these emerging agent-based use cases. It categorizes them into distinct scenarios, details their specific authorization requirements, and performs a comprehensive gap analysis against the existing OAuth 2.0 framework[RFC6749] and its common extensions. The analysis identifies fundamental gaps and requirements, providing a foundation for future work on new extensions within the OAuth Working Group toward creating a more secure and interoperable ecosystem for agent-based systems.
 
 --- middle
 
 # Introduction
 
-The OAuth 2.0 Authorization Framework [RFC6749] has become the de facto standard for delegated authorization on the internet. Its success is rooted in a well-defined model where a resource owner grants a third-party client limited access to their resources without sharing their credentials. This model primarily assumes a user-present, interactive flow where a static set of permissions (scopes) is approved upfront.
+The OAuth 2.0 Authorization Framework [RFC6749] has become the factual standard for delegated authorization on the internet. Its success is rooted in a well-defined model where a resource owner grants a third-party client limited access to their resources without sharing their credentials. This model primarily assumes a user-present, interactive flow where a static set of permissions (scopes) is approved upfront.
 
 However, the landscape is rapidly evolving with the advent of sophisticated AI-driven "Agents". These are not simple clients but autonomous or semi-autonomous entities that perform complex, multi-step tasks on behalf of a user or another system. Their operational characteristics include:
 
@@ -78,10 +78,10 @@ However, the landscape is rapidly evolving with the advent of sophisticated AI-d
 *   **Cross-Domain**: Chained or composited task orchestration often require calling of resources in different administrative domains.
 
 This document does not propose new solutions or protocols. Instead, its purpose is to:
-*   Define the key actors and concepts in agent-based authorization scenarios.
-*   Describe a set of core use cases that exemplify the new challenges.
-*   Conduct a gap analysis for each use case, identifying where the current OAuth 2.0 framework and its extensions fall short.
-*   Summarize the key security considerations.
+*   **Define the key actors and concepts in agent-based authorization scenarios.
+*   **Describe a set of core use cases that exemplify the new challenges.
+*   **Conduct requirement and gap analysis for each use case, identifying where the current OAuth 2.0 framework and its extensions fall short.
+*   **Summarize the key security considerations.
 
 By clearly articulating these gaps, this document aims to provide a shared understanding of the problem space and stimulate focused work on developing interoperable solutions for the next generation of delegated authorization.
 
@@ -102,7 +102,7 @@ In addition to the terms defined in [RFC6749], this document uses the following 
 : A natural person whom accessed data describes, and who is neither the Resource Owner nor a party to the authorization exchange.
 
 **Delegation Chain:**
-: A sequence of delegation events, where one actor grants a subset of its authority to another. For example: User -> Agent A -> Agent B.
+: A sequence of delegation events, where one actor grants a subset of its authority to another, for example: User -> Agent A -> Agent B.
 
 **Intent:**
 : A high-level description of a goal or task that the user wants the agent to accomplish (e.g., "book me a flight to Hawaii for next week").
@@ -116,9 +116,118 @@ In addition to the terms defined in [RFC6749], this document uses the following 
 **Execution Layer Evidence:**
 : A verifiable, non-repudiable record, generated at the moment a specific, critical action is taken. It serves as cryptographic proof of a principal's explicit consent to the concrete parameters of that single action (e.g., "The user explicitly approved booking 'Sunnyvale Park' for  $25 on this specific date"). This evidence proves *what* was done and under whose direct approval at runtime, not just what was *allowed* to be done.
 
-#  Core Use Cases and Gap Analysis
+#  A Visual overview of Core Authorization Gaps
 
-This section explores different categories of use cases, providing a concrete example for each, and analyzes the gaps in the existing OAuth 2.x framework. For each use case, we examine what can be achieved with existing tools and, more importantly, what is missing.
+Before diving into the specific use cases, it is crucial to understand the three fundamental and recurring challenges that emerge when applying the current OAuth 2.0 framework to agent-based systems. These challenges, or "gaps," are not unique to any single use case but are common threads that run through nearly all of them. Visualizing these gaps helps to clarify the problems this document aims to address. For detailed gaps of each use case, please refer to the section of Use Cases and Gap Analysis.
+
+##  The Authorization Context Gap
+
+The Problem: There is a disconnect between the user's high-level intention given to an agent at one point in time, and the specific, low-level permission request made by that agent at a later time. The Authorization Server (AS) and the user, when asked for consent, lack the necessary context to securely evaluate the request.
+
+Imagine a user asks their AI assistant to plan a trip. Days later, the assistant needs to book a flight.
+
+~~~~
+User                 Agent                  AS (Authorization Server)
+ |                    |                      |
+ |---"Plan my trip"-->|                      |  Time T1: User provides high-level intent.
+ | (Context: Paris)   |                      |
+ .                    .                      .
+ . (Hours/Days Later) .                      .
+ .                    .                      .
+ |                    |---1. Request Token-->|  Time T2: Agent needs to perform a specific action.
+ |                    |  (scope=booking_api) |
+ |                    |                      |
+ |                    |<--2. Redirect for----|
+ |                        User Consent       |
+ |                                           |
+ |<--3. AS shows Consent Prompt--------------|
+ |  +------------------------------------+   |
+ |  | "Allow 'AI Assistant' to           |   |
+ |  |  access your Booking Service?"     |   |
+ |  +------------------------------------+   |
+ |       ^                                   |
+ +-------|-----------------------------------+
+         |
+  <?>--[ THE CONTEXT GAP ]--<?>
+  The user thinks: "Why now? Is this for my Paris trip, or something else?"
+  The AS doesn't know the original intent ("Paris trip") to help the user decide.
+~~~~
+
+Explanation of the Gap:
+At Time T2, the consent prompt shown to the user is generic. It lacks the critical context from Time T1 (i.e., that this booking is for the "Paris trip"). The user is forced to either deny a legitimate request due to uncertainty or approve it blindly, creating a security risk. The AS has no standard mechanism to receive and validate this "intent" context from the initial interaction.
+
+##  The Delegation Chain Gap
+
+The Problem: When a task is delegated through a series of agents (A → B → C), there is no standard, cryptographically verifiable way for the final Resource Server (RS) to confirm that the entire delegation chain is legitimate and authorized by the original user.
+
+A user's Travel Agent (A) delegates flight booking to a specialized Flight Booker (B), which in turn uses a Payment Processor (C) to complete the transaction.
+
+~~~~
+User -> Agent A -----> Agent B -----> Agent C -----> Resource Server
+       (Travel)      (Flights)       (Payment)         (Bank API)
+
+THE IDEAL (but currently missing standard):
+A cryptographically verifiable chain of authority.
+[Token for A] -> delegates to -> [Token for B] -> delegates to -> [Token for C]
+
+THE REALITY (The Gap):
+                                                 Agent C presents its token.
+                                                       |
+                                                       v
+                                                 Resource Server
+                                                 +-------------+
+                                                 | Sees Token C|
+                                                 | Validates C |
+                                                 +-------------+
+                                                       ^
+                                                       |
+                                     <?>--[ THE DELEGATION CHAIN GAP ]--<?>
+                                     The RS has no standard way to know that
+                                     C is acting on behalf of B, which is
+                                     acting on behalf of A, under the
+                                     authority of the original User.
+~~~~
+
+Explanation of the Gap:
+The Resource Server (the Bank API) can only validate that the token from Agent C is valid for Agent C. It cannot "look back" up the chain to verify that this request originated from a legitimate delegation path starting with the user's authorization to Agent A. This prevents end-to-end security, makes auditing impossible, and complicates the enforcement of progressively narrower permissions down the chain.
+
+##  The Mass Revocation Gap
+
+The Problem: When a security event occurs (e.g., a user's account is compromised, an agent is found to be malicious), there is no standard, efficient mechanism to instantly revoke all authorizations and tokens associated with a specific entity (like a user or a client). The existing one-by-one revocation process is too slow.
+
+A user's account is compromised. This user had previously granted access to multiple agents, which now hold active tokens.
+
+~~~~
+      Security Event!
+(User Account Compromised)
+           |
+           v
+Authorization Server (AS)
+  /          |          \
+ /           |           \
+Grant 1   Grant 2 ... Grant N   (Many active grants for the compromised user)
+(Token A) (Token B)   (Token Z)
+   |         |           |
+   v         v           v
+Agent 1   Agent 2 ... Agent N
+
+THE REALITY (The Gap): One-by-one revocation (RFC 7009)
+1. Admin calls: REVOKE(Token A)
+2. Admin calls: REVOKE(Token B)
+...
+N. Admin calls: REVOKE(Token Z)
+<----[ VULNERABILITY WINDOW ]---->
+During this slow, sequential process, malicious actors can still use
+Tokens B through Z to access resources.
+~~~~~
+
+
+Explanation of the Gap:
+The time it takes to iterate through and revoke each token individually creates a dangerous "vulnerability window." Attackers can continue to exploit the still-valid tokens until the revocation process is complete. What is needed is a standardized, atomic "kill switch" to terminate all related sessions and grants instantly in response to a single event.
+
+#  Use Cases and Gap Analysis
+
+This section explores three categories of use cases, providing a concrete example for each, and analyzes the gaps in the existing OAuth 2.x framework. For each use case, we examine what can be achieved with existing tools and, more importantly, what is missing.
 
 ## Category 1: Personal & Consumer Scenarios
 
@@ -139,31 +248,38 @@ The summary includes only authorization requirements that recur across multiple 
 
 ### Use Case 1: Personal Digital Assistant
 
-*   **Scenario Description:** A user gives a high-level, natural language command to their AI assistant. The assistant must decompose this command into multiple steps and interact with various services to fulfill the request.
+*   **Scenario Description:** A user gives a high-level, natural language command to their AI assistant. The assistant can decompose this command into multiple steps and interact with various services to fulfill the request.
 
 *   **Example:** On Monday morning, Alice tells her AI assistant, "Help me plan a picnic for this Saturday." The assistant begins its work autonomously:
     1.  It first checks Alice's calendar for availability (requires `calendar.read`).
     2.  It then checks the weather forecast for Saturday (requires `weather.read`).
     3.  Seeing the weather is good, it spends some time researching nearby parks based on Alice's past preferences (requires `maps.search`and profile access).
     4.  On Tuesday afternoon, after identifying the perfect spot, the assistant determines it needs final authorization to book the picnic spot (requires parks.book) and add the event to Alice's calendar (requires calendar.write).
-*   The assistant now presents an authorization request to Alice.
+    5.  The assistant now presents an authorization request to Alice.
 
-*   **Challenge: Context Collapse and the Erosion of Informed Consent:**
-*   This scenario highlights a fundamental challenge to the traditional OAuth 2.0 model, which stems from the temporal decoupling of task initiation and authorization.
+*   **Challenge: Context Collapse and the Erosion of Informed Consent.** This scenario highlights a fundamental challenge to the traditional OAuth 2.0 model, which stems from the temporal decoupling of task initiation and authorization.
+
     *   **Context Collapse:** The authorization request Alice receives on Tuesday afternoon is a simple prompt listing scopes like parks.book and calendar.write. The original context—the "picnic planning" instruction from the previous day—is lost. To Alice, the request is at best confusing ("Why does this app want to book a park now?") and at worst, indistinguishable from a sophisticated phishing attack. The traditional OAuth consent screen, designed for immediate, in-context requests, fails to provide the necessary assurance for the user to make a safe and informed decision.
+
     *   **Inadequacy of Binary Choices:** Alice's only options are "Grant" or "Deny." However, her real question might be, "Which park did you choose?" or "Is there a fee?" The current framework provides no mechanism for this crucial dialogue. Denying the request causes the agent's task to fail, while granting it feels like signing a blank check.
+
     *   **Task-Level Revocation:** Alice should be able to say, "Cancel the picnic planning," and have all permissions and pending actions related to this specific task instantly revoked, without affecting other tasks the agent might be performing.
+
     *   **Silent Execution Within a Valid Grant**: where an action falls inside an existing grant, no fresh approval is triggered at all.  A high-impact or irreversible action can therefore execute with valid authority and without any human having approved that specific action. The failure is not a bad consent screen, it is the absence of one.
 
 *   **Authorization Requirements:**
+
     *   **Authorization Context:** The authorization request should carry sufficient task and action context for the user to understand why the requested authority is needed.
+
     *   **Task-Scoped Revocation:** The user should be able to revoke authority associated with a specific task without affecting unrelated tasks performed by the same agent.
+
     *   **Pre-Authorized Constraints:** Structured constraints previously approved by the user should remain associated with subsequent actions so that compliance can be checked at execution time.
+
     *   **Admission-to-Execution Binding:** When execution relies on an earlier admission based on originator authorization, applicable policy, or prior consent, the execution endpoint should be able to verify the admission basis and the scope and constraints attached to it.
+
     *   **Action-Specific Approval:** When fresh user approval is required for a high-impact or irreversible action, the approval should be bound to the concrete action parameters and verified before the action takes effect.
 
-*   **Gap Analysis:**
-*   This use case does not imply that OAuth itself should be responsible for parsing user intent (the agent's job) or orchestrating the task (the agent framework's job). Instead, it reveals a critical gap in the authorization experience when interacting with autonomous systems.
+*   **Gap Analysis:** This use case does not imply that OAuth itself should be responsible for parsing user intent (the agent's job) or orchestrating the task (the agent framework's job). Instead, it reveals a critical gap in the authorization experience when interacting with autonomous systems.
 
     *   **What Works (Partially):** The OAuth Authorization Code flow can be used to get initial permissions. Refresh Tokens can maintain the agent's session.
     *   **What's Missing (The Gap):**
@@ -184,7 +300,7 @@ The summary includes only authorization requirements that recur across multiple 
     3.  Start the coffee maker (device: `coffee_maker`, capability: `on_off`).
 
 *   **Authorization Requirements:**
-    *   **Persistent Delegation:** After a one-time setup, the agent must be able to perform these actions daily without Bob's intervention.
+    *   **Persistent Delegation:** After a one-time setup, the agent should be able to perform these actions daily without Bob's intervention.
     *   **Fine-Grained Device & Capability Permissions:** The agent should be authorized to control the `brightness` of the `bedroom_light`, but not, for example, to unlock the `front_door`.
     *   **Conditional or Event-Driven Authorization:** The permissions should only be usable when specific conditions are met (e.g., `time=7AM` AND `day=weekday`).
     *   **Bulk Revocation:** When Bob sells his house, he needs a simple way to revoke all permissions for all devices from his home hub with a single action.
@@ -194,7 +310,7 @@ The summary includes only authorization requirements that recur across multiple 
 
     *   **What's Missing (The Gap):**
         *   **"Scope Explosion" and Usability:** In a home with hundreds of devices and capabilities, presenting the user with a list of thousands of scopes to approve is unmanageable. The OAuth consent screen was not designed for this scale.
-        *   **No Standardized Policy Enforcement:** OAuth grants *what* an agent can do, but not *when* or *under what conditions*. The logic to enforce `time=7AM` is outside the protocol and must be custom-built into the agent or the device's resource server, leading to inconsistent and non-interoperable implementations.
+        *   **No Standardized Policy Enforcement:** OAuth grants *what* an agent can do, but not *when* or *under what conditions*. The logic to enforce `time=7AM` is outside the protocol and should be custom-built into the agent or the device's resource server, leading to inconsistent and non-interoperable implementations.
         *   **No Standardized Bulk Revocation:** [RFC7009] is for revoking one token at a time. There is no standard API to "revoke all tokens for user Bob" or "revoke all tokens issued to the home hub client." This is a critical administrative and security gap, forcing reliance on proprietary AS-specific APIs.
 
 ### Use Case 3: Agent as User's Full Proxy to Access Third-Party Tools
@@ -207,11 +323,11 @@ The summary includes only authorization requirements that recur across multiple 
     
 
 *   **Authorization Requirements:**
-    *   **Agent-User Differentiation:** The third-party service must be able to reliably distinguish between requests coming directly from Charlie and requests made by his agent.
+    *   **Agent-User Differentiation:** The third-party service should be able to reliably distinguish between requests coming directly from Charlie and requests made by his agent.
     *   **Agent-Specific Policies:** The service needs a way to apply different policies (e.g., stricter rate limits, restricted API access) to the agent without impacting the human user's normal access rights.
     *   **Delegated Authority with Constraints:** The authorization given to the agent should be a constrained subset of the user's full permissions (e.g., "can search and download, but no more than 100 papers per hour").
-    *   **Caller-Class Differentiation:** Beyond distinguishing the agent from its user, the service must be able to distinguish among classes of caller (at minimum the interactive human session, the application's own platform-native AI, and external user-delegated agents) in a way the caller cannot self-select.
-    *   **Independent Per-Class Consent:** The user must be able to grant or deny consent for each caller class independently, with no inheritance between classes, consent for one class must not imply consent for any other.
+    *   **Caller-Class Differentiation:** Beyond distinguishing the agent from its user, the service should be able to distinguish among classes of caller (at minimum the interactive human session, the application's own platform-native AI, and external user-delegated agents) in a way the caller cannot self-select.
+    *   **Independent Per-Class Consent:** The user should be able to grant or deny consent for each caller class independently, with no inheritance between classes, consent for one class must not imply consent for any other.
     *   **An Attachment Point for Internal-AI Consent:** The application's own AI features typically never traverse the authorization layer at all, so there is currently nothing to attach a consent decision to for that class.
 
 *   **Gap Analysis:**
@@ -232,9 +348,9 @@ The summary includes only authorization requirements that recur across multiple 
  
 *   **Authorization Requirements:**
     *   **Fine-Grained Resource Access:** The agent should be granted access only to the specific files or settings needed for a task (e.g., a single folder), not the user's entire home directory or full system access.
-    *   **Task-Scoped Permissions:** Permissions should be granted for the duration of a specific task and automatically revoked upon completion. The task lifecycle is typically maintained by a remote agent service, and the OS must have a way to understand or be informed of task boundaries so that permissions can be properly bound to the task's lifetime.
+    *   **Task-Scoped Permissions:** Permissions should be granted for the duration of a specific task and automatically revoked upon completion. The task lifecycle is typically maintained by a remote agent service, and the OS should have a way to understand or be informed of task boundaries so that permissions can be properly bound to the task's lifetime.
 
-    *   **Secure Privilege Escalation:** If a task requires elevated permissions, there must be a secure, user-approved mechanism for the agent to request them just-in-time, rather than running with high privileges constantly. Such a mechanism must account for the fact that the requester is an autonomous agent—a non-human subject with uncertain operational status—rather than assuming a fully capable and responsible human user is always present and in control.
+    *   **Secure Privilege Escalation:** If a task requires elevated permissions, there should be a secure, user-approved mechanism for the agent to request them just-in-time, rather than running with high privileges constantly. Such a mechanism account for the fact that the requester is an autonomous agent—a non-human subject with uncertain operational status—rather than assuming a fully capable and responsible human user is always present and in control.
  
 *   **Gap Analysis:**
     *   **What Works (Partially):** Modern operating systems have their own permission models (e.g., app sandboxing, runtime permission prompts).
@@ -296,7 +412,7 @@ The summary includes only authorization requirements that recur across multiple 
     4.  **Agent D (Payment):** Receives the approved claim from Agent C. It is authorized *only* to execute a payment to the customer's bank account for the approved amount.
 
 *   **Authorization Requirements:**
-    *   **Verifiable Delegation Chain:** The final agent (Payment Agent D) and the resource server (the bank's API) must be able to cryptographically verify the entire authorization path: `Customer -> Agent A -> Agent B -> Agent C -> Agent D`.
+    *   **Verifiable Delegation Chain:** The final agent (Payment Agent D) and the resource server (the bank's API) should be able to cryptographically verify the entire authorization path: `Customer -> Agent A -> Agent B -> Agent C -> Agent D`.
     *   **Principle of Least Privilege at Each Step:** Agent B should have no payment authority, and Agent D should have no access to the customer's policy details. The permissions must be strictly constrained at each step in the chain.
     *   **Auditable Context:** The entire process must be tied to a single, auditable `claim_id` that is securely passed along the chain.
     *   **Data Subject:** Where an agent accesses data describing a Data Subject (a natural person who is not the authorizing Resource Owner), the system need provide a mechanism for the Data Subject to authorize the access and be able to determine and represent the authority that permits this access.
@@ -341,18 +457,19 @@ The summary includes only authorization requirements that recur across multiple 
     - **Registry Agent:** Applies DS records to the parent zone and sends operation notifications.
 
 *   **Authorization Requirements:**
-    - Cryptographically verifiable multi-hop delegation chain for a full audit trail.
-    - Fine-grained permission limited to a fixed set of domains, only allowing DS updating without modifying other DNS records.
-    - Support task-specific revocation: revoke all DS automation permissions without affecting other agent workflows.
-    - Standard audit context identifier passed across all agent hops for compliance logging.
+    - **Verifiable Delegation Chain:** A cryptographically verifiable multi-hop delegation chain is required for a full audit trail.
+    - **Fine-Grained, Constrained Authority:** Permissions must be limited to a fixed set of domains and allow only DS updating, without the ability to modify other DNS records.
+    - **Task-Scoped Revocation:** The ability to revoke all DS automation permissions for a specific task without affecting other agent workflows.
+    - **Standardized Audit Context:** A standard audit context identifier must be passed across all agent hops for compliance logging.
 
 *   **Gap Analysis:**
     *   **What Works (Partially):** Client Credentials can assign identities to registry/registrar agents. RFC 8693 token exchange supports simple single-hop agent delegation.
 
     *   **What's Missing (The Gap)
-    *   **Current DS automation does not use OAuth. OAuth only supports two-party delegation and lacks standard multi-hop RRR delegation syntax; proprietary JWT claims hurt interoperability.
-    *   **OAuth has no standardized task/bulk revocation. Securing DS automation via OAuth would require repetitive single-token revocation in incidents.
-    *   **No reserved OAuth JWT claim for cross-agent audit IDs, breaking consistent compliance logging for DS automation.
+    *   **No Standard for Multi-Hop Delegation:** Current DS automation does not use OAuth. OAuth only supports two-party delegation and lacks a standard syntax for representing a multi-hop RRR delegation chain. Relying on proprietary JWT claims harms interoperability.
+    *   **No Standardized Fine-Grained Authority for DNS:** While Rich Authorization Requests (RAR) [RFC9396] provides a syntax for expressing fine-grained permissions, there is no standardized authorization type or structure defined for DNS operations. Without a common definition, each implementation would invent its own, preventing interoperability for this specific requirement.
+    *   **Inadequate Revocation Mechanisms:** OAuth has no standardized task or bulk revocation API. Securing the entire DS automation workflow via OAuth would require making numerous, slow single-token revocation calls during an incident.
+    *   **No Standard for Cross-Agent Audit ID:** There is no reserved OAuth JWT claim to carry a consistent audit identifier across all agent hops, which breaks end-to-end compliance logging for the DS automation process.
 
 ### Use Case 9: Managed Services
 
@@ -373,9 +490,13 @@ The summary includes only authorization requirements that recur across multiple 
     *   **What Works (Partially):**
     *   **Cross-domain Single Authorization:** The OAuth allows cross-domain authorization through {{RFC7523}} OAuth 2.0 authorization grant and {{?I-D.ietf-oauth-identity-chaining}} Identity Chaining. But it MUST require one access token at a time.
     *   **Single Domain Workflow:** The OAuth allows workflow orchestration through {{?I-D.ietf-oauth-transaction-tokens}} Transaction Token. It only allows workflow inside one trust domain.
+
     *   **What's Missing (The Gap):**
-    *   **Batched Authorization:** How to request access permissions to a batch of resources from the user at once, while precisely delegating fine-grained privileges to the respective sub-agent responsible for executing each sub-task.
-    *   **Cross-domain Workflow:** How to request access permissions across different trust domains, while ensuring secure propagation of important contextual information (claims, caller identity, rich authorization contexts...).
+    *   **No Standard for Multi-Hop, Attenuated Delegation:** The scenarios involving delegation to sub-provider O&M teams or end-user tenants represent a multi-hop, hierarchical delegation where permissions must be narrowed (attenuated) at each step. While OAuth 2.0 Token Exchange [RFC8693] supports a single delegation hop, there is no standard mechanism to represent or verify a full, attenuated delegation chain. This forces reliance on proprietary, non-interoperable solutions to ensure that a sub-provider or tenant cannot exceed the authority granted to them.
+
+    *   **Batched Authorization:** There is no standard for requesting access permissions for a batch of resources at once, while precisely delegating fine-grained privileges to the respective sub-agents responsible for executing each sub-task.
+
+    *   **Cross-domain Workflow:** There is no standard for request access permissions across different trust domains while ensuring the secure propagation of contextual information (claims, caller identity, rich authorization contexts, etc.).
 
 ### Use Case 10: Cross-Organizational Delegation Between Fully-Provisioned Organizations
 

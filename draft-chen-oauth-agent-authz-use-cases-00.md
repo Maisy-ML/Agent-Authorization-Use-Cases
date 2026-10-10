@@ -42,26 +42,32 @@ author:
 - name: Chunchi Peter Liu
   org: Huawei
   email: liuchunchi@huawei.com
+- name: Xiang Liu
+  email: liux15@pcl.ac.cn
     
 informative:
   RFC2119:
   RFC8174:
-  RFC7009:
   RFC6749:
-  RFC7523:
-  RFC8693:
-  RFC9396:
   RFC6750:
+  RFC7009:
+  RFC7523:
   RFC7591:
   RFC7636:
   RFC7662:
-  RFC9728:  
-  I-D.song-oauth-ai-agent-collaborate-authz:
-  I-D.ni-oauth-batch-authorization-delegation:
-  I-D.ietf-oauth-identity-chaining:
+  RFC8628:
+  RFC8693:
+  RFC9396:
+  RFC9449:
+  RFC9486:
   I-D.fletcher-transaction-token-chaining-profile:
-  I-D.yossif-agent-mandate-problem:
+  I-D.ietf-dnsop-ds-automation:
   I-D.ietf-oauth-client-id-metadata-document:
+  I-D.ietf-oauth-identity-chaining:
+  I-D.ietf-oauth-transaction-tokens:
+  I-D.ni-oauth-batch-authorization-delegation:
+  I-D.song-oauth-ai-agent-collaborate-authz:
+  I-D.yossif-agent-mandate-problem:
 
 
 --- abstract
@@ -242,15 +248,15 @@ This section explores three categories of use cases, providing a concrete exampl
 The personal and consumer use cases share several recurring authorization requirements that challenge the traditional, static, and upfront nature of OAuth 2.0 grants. These requirements focus on providing user-centric context, control, and lifecycle management for agent-delegated authority.
 
 
-| Requirement Theme | Use Cases and Forms |
-| ----------------- | ------------------- |
-| **Dynamic & Contextual Authorization** | **UC1:**  Authorization with task context; **UC2:** Conditional authority (based on event or time); **UC4:** Just-in-time permission requests. |
-| **Granular & Constrained Authority** | **UC1, UC3:** User-defined constraints (e.g., spending limits); **UC2, UC4:** Fine-grained permissions (for devices, files); **UC3:**  Agent-specific policies (e.g., rate limits); **UC5:** User-defined scopes for headless services.|
-| **Differentiated Actor Identity** | **UC3:** Distinguishing human vs agent, between different agent classes. |
-| **Task-Oriented Lifecycle Management** | **UC1, UC4:** Task-bound revocation.; **UC2:** Bulk client revocation; **UC5:** Headless bootstrapping of credentials.|
-| **Verifiable, Action-Specific Consent** | **UC1:** Approval of final action parameters at execution time. |
+| Requirement Theme                      | Use Cases and Forms|
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dynamic & Contextual Authorization** | **UC1:** Authorization with task context; **UC2:** Conditional authority (based on event or time); **UC4:** Just-in-time permission requests; **UC6:** Acting on a challenge. |
+| **Granular & Constrained Authority**   | **UC1, UC3:** User-defined constraints (e.g., spending limits); **UC2, UC4:** Fine-grained permissions (for devices, files); **UC3:** Agent-specific policies (e.g., rate limits); **UC5:** User-defined scopes for headless services. |
+| **Differentiated Actor Identity**      | **UC3:** Distinguishing human vs agent, between different agent classes.|
+| **Task-Oriented Lifecycle Management** | **UC1, UC4:** Task-bound revocation; **UC2:** Bulk client revocation; **UC5:** Headless bootstrapping of credentials; **UC6:** Terminal disposition signaling.                   |
+| **Verifiable, Action-Specific Consent**| **UC1:** Approval of final action parameters at execution time; **UC6:** Separation of grant-layer authority from execution-layer evidence.                                    |
 
-The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as the architectural mismatch with local OS permissions in UC4 or the need for independent per-class consent in UC3.
+The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as the architectural mismatch with local OS permissions in UC4, the need for independent per-class consent in UC3, and the lack of presence signaling and visible destination routing in UC6.
 
 ### Use Case 1: Personal Digital Assistant
 
@@ -361,11 +367,11 @@ The summary includes only authorization requirements that recur across multiple 
 *   **Gap Analysis:**
     *   **What Works (Partially):** Modern operating systems have their own permission models (e.g., app sandboxing, runtime permission prompts).
     *   **What's Missing (The Gap):**
-    *   **Architectural Mismatch:** OAuth is a framework for network-based delegated authorization. It is not designed to manage local, process-level OS permissions. There is a fundamental mismatch between the two models.
+        *   **Architectural Mismatch:** OAuth is a framework for network-based delegated authorization. It is not designed to manage local, process-level OS permissions. There is a fundamental mismatch between the two models.
 
-    *   **No Protocol-Level Link Between Task Lifecycle and Permission Lifecycle:** There is no standard protocol to connect an agent's high-level task intent (often determined in the cloud or maintained by a remote agent service) to a secure, fine-grained grant of local OS permissions on the device. More fundamentally, even if a task lifecycle is tracked by the agent service, the OS has no visibility into that lifecycle and no standard way to understand when a task begins, updates, or completes. Without a protocol-level link between task state and permission state, the OS cannot bind a permission grant to the duration of a specific task or automatically revoke it upon task completion.
+        *   **No Protocol-Level Link Between Task Lifecycle and Permission Lifecycle:** There is no standard protocol to connect an agent's high-level task intent (often determined in the cloud or maintained by a remote agent service) to a secure, fine-grained grant of local OS permissions on the device. More fundamentally, even if a task lifecycle is tracked by the agent service, the OS has no visibility into that lifecycle and no standard way to understand when a task begins, updates, or completes. Without a protocol-level link between task state and permission state, the OS cannot bind a permission grant to the duration of a specific task or automatically revoke it upon task completion.
 
-    *   **No Elevation Mechanism Suitable for Agent Subjects:** While operating systems provide privilege escalation mechanisms (e.g., sudo, UAC, macOS authorization dialogs), these are designed for human users who are capable of acting autonomously and taking responsibility for their actions. Their core assumption is that the requester is a responsible human subject. An autonomous agent, however, is a non-human subject with uncertain operational status—it may make errors, enter unexpected states, or require human intervention. Existing elevation mechanisms do not support a non-human subject requesting elevation on behalf of a user, nor do they provide a way to attribute accountability when an agent's elevated action causes harm. As a result, developers are forced to choose between two undesirable outcomes: either the agent runs with persistent broad permissions (violating least privilege), or every elevation request requires human intervention (defeating the purpose of automation). The gap is not merely the absence of a mechanism for one-time elevation, but the absence of a mechanism designed for agents as a distinct subject type with built-in safety and accountability guardrails.
+        *   **No Elevation Mechanism Suitable for Agent Subjects:** While operating systems provide privilege escalation mechanisms (e.g., sudo, UAC, macOS authorization dialogs), these are designed for human users who are capable of acting autonomously and taking responsibility for their actions. Their core assumption is that the requester is a responsible human subject. An autonomous agent, however, is a non-human subject with uncertain operational status—it may make errors, enter unexpected states, or require human intervention. Existing elevation mechanisms do not support a non-human subject requesting elevation on behalf of a user, nor do they provide a way to attribute accountability when an agent's elevated action causes harm. As a result, developers are forced to choose between two undesirable outcomes: either the agent runs with persistent broad permissions (violating least privilege), or every elevation request requires human intervention (defeating the purpose of automation). The gap is not merely the absence of a mechanism for one-time elevation, but the absence of a mechanism designed for agents as a distinct subject type with built-in safety and accountability guardrails.
 
 ### Use Case 5: First Connection to a Service with No Authorization Front Channel
 
@@ -387,9 +393,9 @@ Today her only practical option is to copy a static API key into the agent's env
 *   **Gap Analysis:**
     *   **What Works (Partially):** The Device Authorization Grant [RFC8628] removes the co-located browser requirement on the client side. Static API keys work operationally, which is why they are the de facto practice.
     *   **What's Missing (The Gap):**
-    *   **A verification page is still assumed:** [RFC8628] presumes an authorization server with a browser-facing verification page, and the client initiates the request and proposes the scopes. It does not cover the case where no such page exists because the service has no front channel at all.
-    *   **No standard first-connection grant:** There is no standardized way for the user to grant scoped, revocable access and for the agent to obtain the resulting credential when no front channel exists on either side. This precedes the flows in the existing use cases; Use Case 1's gap analysis, for example, notes that the Authorization Code flow can obtain the initial permissions, which assumes that front channel is available.
-    *   **The workaround is the anti-pattern:** Environment-variable API keys are long-lived, over-broad, and invisible to the user after setup; these are the same over-privileging properties Section 5 warns against.
+        *   **A verification page is still assumed:** [RFC8628] presumes an authorization server with a browser-facing verification page, and the client initiates the request and proposes the scopes. It does not cover the case where no such page exists because the service has no front channel at all.
+        *   **No standard first-connection grant:** There is no standardized way for the user to grant scoped, revocable access and for the agent to obtain the resulting credential when no front channel exists on either side. This precedes the flows in the existing use cases; Use Case 1's gap analysis, for example, notes that the Authorization Code flow can obtain the initial permissions, which assumes that front channel is available.
+        *   **The workaround is the anti-pattern:** Environment-variable API keys are long-lived, over-broad, and invisible to the user after setup; these are the same over-privileging properties Section 5 warns against.
 
 ### Use Case 6: First Connection with a Front Channel the Client Does Not Use
 
@@ -419,25 +425,25 @@ Today her only practical option is to copy a static API key into the agent's env
 
 The enterprise and business-process use cases share several recurring authorization requirements, although the form of each requirement depends on the workflow structure and trust boundaries involved.
 
-| Requirement Theme | Use Cases and Forms |
-| ----------------- | ------------------- |
-| **Constrained Delegated Authority** | **UC7:** least privilege at each step; **UC8:** authority partitioned by branch; **UC9:** domain- and operation-specific permissions; **UC10:** scoped delegation to sub-providers and tenants; **UC11:** attenuation at each delegation hop |
-| **Verifiable Delegation Provenance** | **UC7:** verification of the multi-hop authorization path; **UC9:** verification of the Registrant--Registrar--Registry delegation; **UC11:** verification of attenuated authority and the represented principal across organizations |
-| **Common Task Identifier Across Hops** | **UC7:** common `claim_id`; **UC9:** common audit context identifier across agent hops |
-| **Revocation & Authorization Lifecycle** | **UC8:** termination of task-group authority; **UC9:** task-specific revocation; **UC11:** revocation with bounded staleness |
-| **Cross-Domain Authorization** | **UC10:** authorization across sub-provider administrative domains; **UC11:** authorization between independently administered organizations |
+| Requirement Theme                   | Use Cases and Forms|
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Constrained Delegated Authority** | **UC7:** least privilege at each step; **UC8:** authority partitioned by branch; **UC9:** domain- and operation-specific permissions; **UC10:** scoped delegation to sub-providers and tenants; **UC11:** attenuation at each delegation hop; **UC12:** constrained and verifiable delegation for subtasks. |
+| **Verifiable Delegation Provenance**  | **UC7:** verification of the multi-hop authorization path; **UC9:** verification of the Registrant--Registrar--Registry delegation; **UC11:** verification of attenuated authority and the represented principal across organizations; **UC12:** end-to-end verification of delegation restrictions. |
+| **Common Task Identifier Across Hops**| **UC7:** common `claim_id`; **UC9:** common audit context identifier across agent hops; **UC12:** consistent authorization context across subsequent approvals.                                                                        |
+| **Revocation & Authorization Lifecycle**| **UC8:** termination of task-group authority; **UC9:** task-specific revocation; **UC11:** revocation with bounded staleness; **UC12:** task-scoped revocation of derived authority across domains.                                          |
+| **Cross-Domain Authorization**        | **UC10:** authorization across sub-provider administrative domains; **UC11:** authorization between independently administered organizations; **UC12:** consistent context and revocation across domains.                                       |
 
-The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as data-subject authorization and execution-layer evidence in UC7, aggregate constraints and late-bound members in UC8, the standardized representation of a cross-agent audit identifier in UC9, batched authorization in UC10, and stranger verifiability in UC11.
+The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as data-subject authorization and execution-layer evidence in UC7, aggregate constraints and late-bound members in UC8, the standardized representation of a cross-agent audit identifier in UC9, batched authorization in UC10, stranger verifiability in UC11, and the incomplete binding between original tasks and subsequent authorizations in UC12.
 
 ### Use Case 7: Complex Business Process Automation
 
 *   **Scenario Description:** A task is passed through a chain of specialized agents, each performing one step of a larger business process.
 
 *   **Example:** An automated insurance claim process:
-    1.  **Agent A (Intake):** Receives a claim from a customer and is authorized to read the customer's policy. It passes the claim to the next agent.
-    2.  **Agent B (Verification):** Receives the claim from Agent A. It is authorized to access external databases to verify the details of the incident. It then passes the verified claim to Agent C.
-    3.  **Agent C (Adjudication):** Receives the verified claim from Agent B. It is authorized to run a risk assessment and approve or deny the claim. If approved, it delegates the final action to Agent D.
-    4.  **Agent D (Payment):** Receives the approved claim from Agent C. It is authorized *only* to execute a payment to the customer's bank account for the approved amount.
+    1. Agent A (Intake): Receives a claim from a customer and is authorized to read the customer's policy. It passes the claim to the next agent.
+    2. Agent B (Verification): Receives the claim from Agent A. It is authorized to access external databases to verify the details of the incident. It then passes the verified claim to Agent C.
+    3. Agent C (Adjudication): Receives the verified claim from Agent B. It is authorized to run a risk assessment and approve or deny the claim. If approved, it delegates the final action to Agent D.
+    4. Agent D (Payment): Receives the approved claim from Agent C. It is authorized *only* to execute a payment to the customer's bank account for the approved amount.
 
 *   **Authorization Requirements:**
     *   **Verifiable Delegation Chain:** The final agent (Payment Agent D) and the resource server (the bank's API) should be able to cryptographically verify the entire authorization path: `Customer -> Agent A -> Agent B -> Agent C -> Agent D`.
@@ -446,14 +452,13 @@ The summary includes only authorization requirements that recur across multiple 
     *   **Data Subject:** Where an agent accesses data describing a Data Subject (a natural person who is not the authorizing Resource Owner), the system need provide a mechanism for the Data Subject to authorize the access and be able to determine and represent the authority that permits this access.
     *   **Execution-Layer Evidence for Final Action:** The final payment action by Agent D must not only be authorized by the delegation chain (Grant-Layer Authority) but must also generate verifiable Execution-Layer Evidence. This evidence must bind the specific payment details (amount, recipient) to the full, verifiable delegation chain and the original claim_id, creating an undeniable record that the specific transaction was legitimate and explicitly sanctioned.
 
-
 *   **Gap Analysis:**
     *   **What Works (Partially):** OAuth 2.0 Token Exchange [RFC8693] introduces the `act` (actor) claim, which provides a primitive to show that one agent is acting on behalf of another. This is a foundational building block.
     *   **What's Missing (The Gap):**
-    *   **No Native Support for Chains:** A standard OAuth token represents a simple, two-party delegation (User -> Agent A). It cannot natively represent a multi-step chain (`User -> A -> B -> C`). While the `act` claim from [RFC8693] helps, there is no standard for how to nest these claims to create a verifiable, multi-hop chain. This is a major architectural gap.
-    *   **Lack of Standardized Context Passing:** There is no standard field in an OAuth token to carry the `claim_id` securely through the process. Developers resort to custom claims in a JWT, which harms interoperability.
-    *   **No Standard Representation for a Third-Party Data Subject:** Existing OAuth mechanisms do not define common semantics for representing that the protected data being accessed concerns a person who is distinct from the Resource Owner or authorization subject, or for indicating the authority under which that third-party data may be accessed. RFC 8693 can represent the current and prior actors in a delegation chain, but does not define a distinct Data Subject role for this purpose. RFC 9396 permits application-specific authorization details, but does not define common semantics for representing this relationship. As a result, downstream agents and Resource Servers cannot rely on an interoperable representation of the Data Subject relationship or the authority permitting access to that person's data.
-    *   **No Standard for Execution-Layer Evidence:** The existing OAuth framework excels at defining Grant-Layer Authority—what an agent is allowed to do. However, it lacks a standard mechanism for generating Execution-Layer Evidence—a non-repudiable, cryptographic proof of a user's explicit consent for a specific, high-risk action at the moment it occurs. This gap is critical for auditability and dispute resolution in processes like insurance claim payments, as grant-layer tokens (representing the delegation chain) prove potential, not the legitimacy of a specific, executed transaction.
+        *   **No Native Support for Chains:** A standard OAuth token represents a simple, two-party delegation (User -> Agent A). It cannot natively represent a multi-step chain (`User -> A -> B -> C`). While the `act` claim from [RFC8693] helps, there is no standard for how to nest these claims to create a verifiable, multi-hop chain. This is a major architectural gap.
+        *   **Lack of Standardized Context Passing:** There is no standard field in an OAuth token to carry the `claim_id` securely through the process. Developers resort to custom claims in a JWT, which harms interoperability.
+        *   **No Standard Representation for a Third-Party Data Subject:** Existing OAuth mechanisms do not define common semantics for representing that the protected data being accessed concerns a person who is distinct from the Resource Owner or authorization subject, or for indicating the authority under which that third-party data may be accessed. RFC 8693 can represent the current and prior actors in a delegation chain, but does not define a distinct Data Subject role for this purpose. RFC 9396 permits application-specific authorization details, but does not define common semantics for representing this relationship. As a result, downstream agents and Resource Servers cannot rely on an interoperable representation of the Data Subject relationship or the authority permitting access to that person's data.
+        *   **No Standard for Execution-Layer Evidence:** The existing OAuth framework excels at defining Grant-Layer Authority—what an agent is allowed to do. However, it lacks a standard mechanism for generating Execution-Layer Evidence—a non-repudiable, cryptographic proof of a user's explicit consent for a specific, high-risk action at the moment it occurs. This gap is critical for auditability and dispute resolution in processes like insurance claim payments, as grant-layer tokens (representing the delegation chain) prove potential, not the legitimacy of a specific, executed transaction.
 
 ### Use Case 8: Coordinated Task Group
 
@@ -472,8 +477,8 @@ The summary includes only authorization requirements that recur across multiple 
 *   **Gap Analysis:**
     *   **What Works (Partially):** Existing mechanisms address several parts of this problem. [I-D.song-oauth-ai-agent-collaborate-authz] considers centralized authorization for static and dynamic task groups. [I-D.ni-oauth-batch-authorization-delegation] allows a client to express how permissions and authorization context are partitioned across multiple actors in an authorization request, including scoping the permitted actor per `authorization_details` entry. Token Exchange [RFC8693], Identity Chaining [I-D.ietf-oauth-identity-chaining], and Transaction Token Chaining [I-D.fletcher-transaction-token-chaining-profile] provide building blocks for propagating delegated authority and context along individual delegation chains.
     *   **What's Missing (The Gap):**
-    *   **No Common Task-Group Authorization Model:** Existing mechanisms can authorize or constrain individual members, but do not define a common interoperable binding that relates independently delegated authorities to the same task group, including late-bound members and a common lifecycle.
-    *   **No Shared Authorization State Across Branches:** Per-member partitioning does not address constraints consumed jointly by multiple branches. Across separately administered domains, there is no standard way for delegated authorizations to reference and consistently enforce the same task-level aggregate authorization state.
+        *   **No Common Task-Group Authorization Model:** Existing mechanisms can authorize or constrain individual members, but do not define a common interoperable binding that relates independently delegated authorities to the same task group, including late-bound members and a common lifecycle.
+        *   **No Shared Authorization State Across Branches:** Per-member partitioning does not address constraints consumed jointly by multiple branches. Across separately administered domains, there is no standard way for delegated authorizations to reference and consistently enforce the same task-level aggregate authorization state.
 
 ### Use Case 9: Automated DNSSEC DS Record Maintenance Agent
 
@@ -494,10 +499,10 @@ The summary includes only authorization requirements that recur across multiple 
     *   **What Works (Partially):** Client Credentials can assign identities to registry/registrar agents. RFC 8693 token exchange supports simple single-hop agent delegation.
 
     *   **What's Missing (The Gap)
-    *   **No Standard for Multi-Hop Delegation:** Current DS automation does not use OAuth. OAuth only supports two-party delegation and lacks a standard syntax for representing a multi-hop RRR delegation chain. Relying on proprietary JWT claims harms interoperability.
-    *   **No Standardized Fine-Grained Authority for DNS:** While Rich Authorization Requests (RAR) [RFC9396] provides a syntax for expressing fine-grained permissions, there is no standardized authorization type or structure defined for DNS operations. Without a common definition, each implementation would invent its own, preventing interoperability for this specific requirement.
-    *   **Inadequate Revocation Mechanisms:** OAuth has no standardized task or bulk revocation API. Securing the entire DS automation workflow via OAuth would require making numerous, slow single-token revocation calls during an incident.
-    *   **No Standard for Cross-Agent Audit ID:** There is no reserved OAuth JWT claim to carry a consistent audit identifier across all agent hops, which breaks end-to-end compliance logging for the DS automation process.
+        *   **No Standard for Multi-Hop Delegation:** Current DS automation does not use OAuth. OAuth only supports two-party delegation and lacks a standard syntax for representing a multi-hop RRR delegation chain. Relying on proprietary JWT claims harms interoperability.
+        *   **No Standardized Fine-Grained Authority for DNS:** While Rich Authorization Requests (RAR) [RFC9396] provides a syntax for expressing fine-grained permissions, there is no standardized authorization type or structure defined for DNS operations. Without a common definition, each implementation would invent its own, preventing interoperability for this specific requirement.
+        *   **Inadequate Revocation Mechanisms:** OAuth has no standardized task or bulk revocation API. Securing the entire DS automation workflow via OAuth would require making numerous, slow single-token revocation calls during an incident.
+        *   **No Standard for Cross-Agent Audit ID:** There is no reserved OAuth JWT claim to carry a consistent audit identifier across all agent hops, which breaks end-to-end compliance logging for the DS automation process.
 
 ### Use Case 10: Managed Services
 
@@ -520,11 +525,11 @@ The summary includes only authorization requirements that recur across multiple 
     *   **Single Domain Workflow:** The OAuth allows workflow orchestration through {{?I-D.ietf-oauth-transaction-tokens}} Transaction Token. It only allows workflow inside one trust domain.
 
     *   **What's Missing (The Gap):**
-    *   **No Standard for Multi-Hop, Attenuated Delegation:** The scenarios involving delegation to sub-provider O&M teams or end-user tenants represent a multi-hop, hierarchical delegation where permissions must be narrowed (attenuated) at each step. While OAuth 2.0 Token Exchange [RFC8693] supports a single delegation hop, there is no standard mechanism to represent or verify a full, attenuated delegation chain. This forces reliance on proprietary, non-interoperable solutions to ensure that a sub-provider or tenant cannot exceed the authority granted to them.
+        *   **No Standard for Multi-Hop, Attenuated Delegation:** The scenarios involving delegation to sub-provider O&M teams or end-user tenants represent a multi-hop, hierarchical delegation where permissions must be narrowed (attenuated) at each step. While OAuth 2.0 Token Exchange [RFC8693] supports a single delegation hop, there is no standard mechanism to represent or verify a full, attenuated delegation chain. This forces reliance on proprietary, non-interoperable solutions to ensure that a sub-provider or tenant cannot exceed the authority granted to them.
 
-    *   **Batched Authorization:** There is no standard for requesting access permissions for a batch of resources at once, while precisely delegating fine-grained privileges to the respective sub-agents responsible for executing each sub-task.
+        *   **Batched Authorization:** There is no standard for requesting access permissions for a batch of resources at once, while precisely delegating fine-grained privileges to the respective sub-agents responsible for executing each sub-task.
 
-    *   **Cross-domain Workflow:** There is no standard for request access permissions across different trust domains while ensuring the secure propagation of contextual information (claims, caller identity, rich authorization contexts, etc.).
+        *   **Cross-domain Workflow:** There is no standard for request access permissions across different trust domains while ensuring the secure propagation of contextual information (claims, caller identity, rich authorization contexts, etc.).
 
 ### Use Case 11: Cross-Organizational Delegation Between Fully-Provisioned Organizations
 
@@ -539,13 +544,38 @@ The summary includes only authorization requirements that recur across multiple 
 
 *   **Gap Analysis:**
     *   **What's Missing (The Gap):**
-    *   **Pre-Established Trust Assumption:** Existing cross-domain mechanisms presuppose arranged trust. OAuth Identity Chaining, for example, requires the participating authorization servers to have pre-established trust and exchanged key material (Section 2.1) - precisely what a first-contact interaction lacks by definition.
-    *   **Runtime Coupling to Foreign Infrastructure:** Token-exchange and challenge-based patterns place the sending side's authorization server (or one federated with it) in the request path, making the availability, latency, and reachability of another organization's infrastructure a precondition for the receiver's own service.
-    *   **Delegation Opacity at the Receiver:** Standard access tokens do not allow a receiving organization to independently verify multi-hop narrowing or the invariance of the acting-for principal across intermediaries; the receiver is asked to trust issuer-side policy it cannot inspect.
+        *   **Pre-Established Trust Assumption:** Existing cross-domain mechanisms presuppose arranged trust. OAuth Identity Chaining, for example, requires the participating authorization servers to have pre-established trust and exchanged key material (Section 2.1) - precisely what a first-contact interaction lacks by definition.
+        *   **Runtime Coupling to Foreign Infrastructure:** Token-exchange and challenge-based patterns place the sending side's authorization server (or one federated with it) in the request path, making the availability, latency, and reachability of another organization's infrastructure a precondition for the receiver's own service.
+        *   **Delegation Opacity at the Receiver:** Standard access tokens do not allow a receiving organization to independently verify multi-hop narrowing or the invariance of the acting-for principal across intermediaries; the receiver is asked to trust issuer-side policy it cannot inspect.
+
+### Use Case 12: Industrial Agent for Equipment Maintenance
+
+*   **Scenario Description:** A manufacturing enterprise uses an industrial agent to coordinate equipment maintenance. The agent delegates diagnostic and corrective tasks to specialized agents, some operated by an equipment supplier. The participating organizations have an established trust relationship but administer their authorization independently. The actions and agents needed may only become known during execution. A task may begin with permission to read equipment data and later require separate approval for an operational change. The authorization challenge is to preserve the relationship between the original task, subsequent approvals, and delegated authority across this evolving workflow.
+
+*   **Example:** A plant manager asks a maintenance agent to investigate a production issue and recommend a corrective action:
+    1. Agent A (Coordination): Receives authorization to investigate the issue and delegate diagnostic work. Its initial authority permits access to relevant equipment data but does not permit changes to equipment operation.
+    2. Agent B (Diagnosis): An equipment supplier's agent receives limited authority from Agent A to read the data needed for diagnosis. It may delegate part of the analysis to another specialized agent, subject to the same or narrower restrictions. The enterprise's data service must be able to verify the resulting delegated authority.
+    3. Additional Approval: Agent A uses the diagnosis to propose an operational adjustment. Because this exceeds its existing authority, it requests additional authorization from the plant manager. The manager reviews the proposed action in the context of the original maintenance task and authorizes only that action and its delegation for execution.
+    4. Agent C (Execution): Agent A delegates the newly approved action to an execution agent. The equipment service, acting as the Resource Server (RS), verifies that the request is covered by the approved action and the authority delegated to Agent C. Agent B's diagnostic authority does not acquire the additional execution permission.
+    5. Task Completion or Cancellation: When the task ends or the manager withdraws authorization, authority derived for that task must cease to permit further requests, including authority delegated to supplier agents. Other maintenance tasks should remain unaffected.
+
+*   **Authorization Requirements:**
+    *   **Constrained and verifiable Delegation:** Each agent must receive only the authority needed for its subtask. The receiving RS must be able to verify the originating principal, the calling agent, and the applicable delegation restrictions. Where enterprise policy requires verification of each delegation step, the presented authorization information must support that verification across organizational boundaries.
+    *   **Task-Bound Additional Authorization:** Permissions discovered during execution must be requested under the original task context. Additional approval must identify the operation being authorized and the agents permitted to exercise or further delegate that authority. Approval of a corrective action must not broaden permissions held by agents performing diagnosis.
+    *   **Consistent Authorization Context:** The task, its approvals, and the authority derived for participating agents must have a verifiable association across authorization servers and resource servers. This association must support authorization decisions and auditing without disclosing unrelated task data or internal workflow details.
+    *   **Task-Scoped Revocation:** The authorizing principal must be able to terminate authority derived for the task, including downstream authority issued in other domains. Participating systems must have a defined way to determine which authorizations are affected and the maximum delay before withdrawal takes effect. This concerns authorization of further requests; handling an operation already in progress remains an application responsibility.
+
+*   **Gap Analysis:**
+    *   **What Works (Partially):** OAuth 2.0 [RFC6749] supports initial authorization and subsequent authorization requests. Rich Authorization Requests (RAR) [RFC9396] can describe a proposed operation. Token Exchange [RFC8693] supports delegation and nested `act` claims identifying current and prior actors. Token Revocation [RFC7009] and Token Introspection [RFC7662] provide token revocation and status checking. Work in progress also addresses parts of this workflow: Identity Chaining [I-D.ietf-oauth-identity-chaining] supports authorization across established trust domains; Transaction Tokens [I-D.ietf-oauth-transaction-tokens] and the Transaction Token Chaining Profile [I-D.fletcher-transaction-token-chaining-profile] propagate transaction context, with the latter also constraining scope across domains; [I-D.song-oauth-ai-agent-collaborate-authz] addresses task groups and member-token revocation.
+    *   **What's Missing (The Gap):**
+        *   **Incomplete Binding Between Tasks and Subsequent Authorizations:** A new authorization request can obtain permission for the corrective action, and transaction identifiers can correlate requests. However, the mechanisms above do not provide a common profile relating the original task authorization, a later approval, and the authority issued to different agents for that task. Such a profile needs to distinguish an approved extension of the task's authority from unrelated access and specify which delegated authorities the new approval affects. This is a gap in common authorization relationships, rather than in the representation of industrial operations.
+        *   **Incomplete End-to-End Verification of Delegation Restrictions:** Actor history in [RFC8693] does not itself prove the restrictions granted at each delegation step. Cross-domain chaining can enforce scope limits through trusted authorization servers, but this does not provide the receiving RS with an independently verifiable record of each upstream delegation and its restrictions. Where that stronger assurance is required, interoperable rules for representing and validating the relationship between source and derived authority remain necessary. Deployments that accept the issuing authorization server's assurance can already rely on existing trust mechanisms and policy.
+        *   **Incomplete Revocation of Derived Authority Across Domains:** [RFC7009] permits revocation of related tokens from the same grant, but a maintenance task may involve multiple grants and authorization servers. [RFC8693] does not generally link the lifecycle of an exchanged token to its source token. Task-group revocation in the cited work in progress does not establish a cross-domain lifecycle for all such derived grants. The remaining gap is a common way to identify dependent authorizations, propagate withdrawal across domains, and establish when downstream enforcement has taken effect. Short token lifetimes and introspection help limit exposure but do not define this dependency model.
+
 
 ## Category 3: Security & Administrative Scenarios
 
-### Use Case 12: Automated Security Incident Response
+### Use Case 13: Automated Security Incident Response
 
 *   **Scenario Description:** A security agent detects a security threat and must take immediate, automated action to contain it.
 
@@ -562,8 +592,8 @@ The summary includes only authorization requirements that recur across multiple 
 *   **Gap Analysis:**
     *   **What Works (Partially):** The OAuth Client Credentials grant is suitable for giving the security agent its own system-level identity and authority.
     *   **What's Missing (The Gap):**
-    *   **Critically Inadequate Revocation API:** This is the most significant gap for this use case. The one-token-at-a-time revocation endpoint in [RFC7009] is completely insufficient for a security incident. The need to make potentially thousands of individual API calls to revoke tokens is too slow and unreliable during an active attack. The lack of a standardized bulk revocation API is a major operational and security failure point.
-    *   **Absence of a Standard for Verifiable Action Records**: The OAuth framework focuses on granting and validating the *authority* to perform an action (i.e., possessing a valid token). It does not, however, define a standard mechanism for creating a **durable, cryptographically verifiable record of the action itself** at the moment of execution. In a security context, a simple log entry stating "action performed" is insufficient for high-stakes forensic analysis. What is missing is a formal, non-repudiable piece of evidence that binds the agent's identity, the specific action taken (e.g., "isolate host `laptop-789`"), the policy justification, and the timestamp into a single, verifiable artifact. This gap makes it difficult to construct an undeniable audit trail for automated, high-risk security operations.
+        *   **Critically Inadequate Revocation API:** This is the most significant gap for this use case. The one-token-at-a-time revocation endpoint in [RFC7009] is completely insufficient for a security incident. The need to make potentially thousands of individual API calls to revoke tokens is too slow and unreliable during an active attack. The lack of a standardized bulk revocation API is a major operational and security failure point.
+        *   **Absence of a Standard for Verifiable Action Records**: The OAuth framework focuses on granting and validating the *authority* to perform an action (i.e., possessing a valid token). It does not, however, define a standard mechanism for creating a **durable, cryptographically verifiable record of the action itself** at the moment of execution. In a security context, a simple log entry stating "action performed" is insufficient for high-stakes forensic analysis. What is missing is a formal, non-repudiable piece of evidence that binds the agent's identity, the specific action taken (e.g., "isolate host `laptop-789`"), the policy justification, and the timestamp into a single, verifiable artifact. This gap makes it difficult to construct an undeniable audit trail for automated, high-risk security operations.
 
 #  Analysis of Existing OAuth Extensions
 

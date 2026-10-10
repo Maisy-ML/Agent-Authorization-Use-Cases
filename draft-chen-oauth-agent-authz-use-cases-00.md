@@ -42,12 +42,8 @@ author:
 - name: Chunchi Peter Liu
   org: Huawei
   email: liuchunchi@huawei.com
-- name: Xiang Liu
-  email: liux15@pcl.ac.cn
     
 informative:
-  RFC2119:
-  RFC8174:
   RFC6749:
   RFC6750:
   RFC7009:
@@ -59,7 +55,6 @@ informative:
   RFC8693:
   RFC9396:
   RFC9449:
-  RFC9486:
   I-D.fletcher-transaction-token-chaining-profile:
   I-D.ietf-dnsop-ds-automation:
   I-D.ietf-oauth-client-id-metadata-document:
@@ -482,7 +477,7 @@ The summary includes only authorization requirements that recur across multiple 
 
 ### Use Case 9: Automated DNSSEC DS Record Maintenance Agent
 
-*   **Scenario Description:** This case follows the multi-agent RRR (Registrant-Registrar-Registry) model defined in `draft-ietf-dnsop-ds-automation-09`. A corporate domain owner deploys chained agents to fully automate DS record updates during DNSSEC KSK rollovers, zone bootstrapping, and zone deletion, relying on CDS/CDNSKEY signals between child authoritative zones and parent registry systems.
+*   **Scenario Description:** This case follows the multi-agent RRR (Registrant-Registrar-Registry) model defined in [I-D.ietf-dnsop-ds-automation]. A corporate domain owner deploys chained agents to fully automate DS record updates during DNSSEC KSK rollovers, zone bootstrapping, and zone deletion, relying on CDS/CDNSKEY signals between child authoritative zones and parent registry systems.
 
 *   **Example:** The whole workflow runs unattended under a one-time delegated permission from the domain registrant, forming a delegation chain: **Registrant --> Registrar Agent --> Registry Agent.**
     - **Zone Agent:** Publishes consistent CDS/CDNSKEY records on all name servers after key rollover.

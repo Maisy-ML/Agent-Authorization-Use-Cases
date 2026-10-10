@@ -6,7 +6,7 @@ submissiontype: IETF
 area: Security
 wg: OAuth Working Group
 
-docname: draft-chen-oauth-agent-authz-use-cases-03
+docname: draft-chen-oauth-agent-authz-use-cases-04
 
 title: Agent Authorization use cases and gap analysis
 abbrev: Authorization use cases
@@ -51,11 +51,17 @@ informative:
   RFC7523:
   RFC8693:
   RFC9396:
+  RFC6750:
+  RFC7591:
+  RFC7636:
+  RFC7662:
+  RFC9728:  
   I-D.song-oauth-ai-agent-collaborate-authz:
   I-D.ni-oauth-batch-authorization-delegation:
   I-D.ietf-oauth-identity-chaining:
   I-D.fletcher-transaction-token-chaining-profile:
   I-D.yossif-agent-mandate-problem:
+  I-D.ietf-oauth-client-id-metadata-document:
 
 
 --- abstract
@@ -281,7 +287,7 @@ The summary includes only authorization requirements that recur across multiple 
 
 *   **Gap Analysis:** This use case does not imply that OAuth itself should be responsible for parsing user intent (the agent's job) or orchestrating the task (the agent framework's job). Instead, it reveals a critical gap in the authorization experience when interacting with autonomous systems.
 
-    *   **What Works (Partially):** The OAuth Authorization Code flow can be used to get initial permissions. Refresh Tokens can maintain the agent's session.
+    *   **What Works (Partially):** The OAuth Authorization Code flow can be used to get initial permissions, provided the client chooses to initiate it upon receiving a challenge. Refresh Tokens can maintain the agent's session.
     *   **What's Missing (The Gap):**
         *   **No Standard for Authorization Context:** The core gap is the lack of a standardized mechanism to carry the justification for the request from the agent to the user via the Authorization Server. OAuth's model, designed for immediate user-initiated flows, implicitly relies on the user's short-term memory to provide context. This assumption breaks down in agentic workflows. There is no standard way for the agent to pass a cryptographically verifiable "context object" (e.g., "This is for the picnic you requested on Monday") that the AS can present to the user.
         *   **No Standardized Interactive Consent Flow:** There is no standard OAuth mechanism for an Authorization Server to facilitate a "clarification dialogue." The AS acts as a simple gatekeeper with a static grant/deny choice. It cannot "pause" the flow to allow the user to query the agent for more details (e.g., "Show me the park details") before consenting to the parks.book scope. This logic is currently left to complex, proprietary application-layer implementations.
@@ -385,6 +391,28 @@ Today her only practical option is to copy a static API key into the agent's env
     *   **No standard first-connection grant:** There is no standardized way for the user to grant scoped, revocable access and for the agent to obtain the resulting credential when no front channel exists on either side. This precedes the flows in the existing use cases; Use Case 1's gap analysis, for example, notes that the Authorization Code flow can obtain the initial permissions, which assumes that front channel is available.
     *   **The workaround is the anti-pattern:** Environment-variable API keys are long-lived, over-broad, and invisible to the user after setup; these are the same over-privileging properties Section 5 warns against.
 
+### Use Case 6: First Connection with a Front Channel the Client Does Not Use
+
+*   **Scenario Description:** A user is working with an agent that reaches a service on her behalf. The agent's client connects to the service for the first time and holds no credential for it. The resource server answers the first request with a challenge [RFC6750] whose WWW-Authenticate header points to its protected resource metadata [RFC9728], and its authorization server supports the authorization code grant with PKCE [RFC7636]. The user is present and a browser is available. Both sides can present the front channel and the client can run the grant, but whether it starts one in response to the challenge is left to the client, and when it does not, the resource server is not told why.
+
+*   **Example:** Erin asks the assistant in her terminal to file a bug in her team's tracker, which the agent reaches through an MCP server protected by the team's authorization server. The first request is answered with 401. Depending on the client and how it was started, the agent opens the sign-in page, fetches the metadata and stops, or stops at once. In the last two cases the agent goes on without the tracker's tools, and what Erin is told, if anything, varies by client. To make the first connection, Erin needs:
+    1. The client to start the authorization when the challenge arrives and she is present, after showing her which authorization server and resource she is being sent to.
+    2. The consent step to stay with her and out of reach of the agent's own automation.
+    3. When the client does not complete it, the resource server to learn what happened, so it can wait, offer another path, or tell her what to do.
+
+*   **Authorization Requirements:**
+    *   **Acting on a Challenge:** A client that can run an interactive grant and has a user present needs to be able to treat a resource server's challenge as a request to start one, with the user's consent.
+    *   **Terminal Disposition:** A client that does not complete the challenge needs a standard, machine-readable way to tell the resource server what happened, from a small enumerated set, for example: user interaction required, user interaction pending, flow not supported, refused by policy, and failed.
+    *   **Visible Destination:** Before the user is sent anywhere, the client needs to show which authorization server and resource the challenge points to, since both come from the resource server.
+
+*   **Gap Analysis:**
+    *   **What Works (Partially):** [RFC6750] defines the challenge, [RFC9728] lets the client find the authorization server from it, and the authorization code grant with PKCE runs once the client starts it. Client ID metadata documents [I-D.ietf-oauth-client-id-metadata-document] and Dynamic Client Registration [RFC7591] let a client with no prior relationship identify itself.
+    *   **What's Missing (The Gap):**
+        *   **No expectation to act:** These documents describe what a client can do after a challenge; none says when it should. Measurements of eight shipped MCP clients, against a resource server that answered the first request with 401 and a challenge carrying resource_metadata, found that in one-shot mode one ran the grant on its own and one did so only with a per-server configuration flag. The rest stopped after discovery or registration, or did nothing, although one of them ran the grant when started as an interactive session. All eight completed the same grant through their own sign-in steps.
+        *   **No disposition:** A client that does not complete the challenge has no standard way to say why. Policy refusal, an unsupported flow, pending user interaction and failure all look the same to the resource server, which hurts incident triage and audit evidence as well as the user. In the measurements, a client in the middle of signing in left the same trace at the resource server as two that had given up: a 401, a fetch of the protected resource metadata, then nothing until its first request with a token.
+        *   **No presence signal:** No standard mechanism lets a client tell the resource server that a user is present and able to complete a front-channel step.
+        *   **Scope:** Completing the challenge establishes grant-layer authority only. Binding a person's decision to the parameters of a specific consequential action stays with the execution-layer evidence the document already separates.
+
 ## Category 2: Enterprise & Business Process Scenarios
 
 ### Authorization Requirement Summary
@@ -393,15 +421,15 @@ The enterprise and business-process use cases share several recurring authorizat
 
 | Requirement Theme | Use Cases and Forms |
 | ----------------- | ------------------- |
-| **Constrained Delegated Authority** | **UC6:** least privilege at each step; **UC7:** authority partitioned by branch; **UC8:** domain- and operation-specific permissions; **UC9:** scoped delegation to sub-providers and tenants; **UC10:** attenuation at each delegation hop |
-| **Verifiable Delegation Provenance** | **UC6:** verification of the multi-hop authorization path; **UC8:** verification of the Registrant--Registrar--Registry delegation; **UC10:** verification of attenuated authority and the represented principal across organizations |
-| **Common Task Identifier Across Hops** | **UC6:** common `claim_id`; **UC8:** common audit context identifier across agent hops |
-| **Revocation & Authorization Lifecycle** | **UC7:** termination of task-group authority; **UC8:** task-specific revocation; **UC10:** revocation with bounded staleness |
-| **Cross-Domain Authorization** | **UC9:** authorization across sub-provider administrative domains; **UC10:** authorization between independently administered organizations |
+| **Constrained Delegated Authority** | **UC7:** least privilege at each step; **UC8:** authority partitioned by branch; **UC9:** domain- and operation-specific permissions; **UC10:** scoped delegation to sub-providers and tenants; **UC11:** attenuation at each delegation hop |
+| **Verifiable Delegation Provenance** | **UC7:** verification of the multi-hop authorization path; **UC9:** verification of the Registrant--Registrar--Registry delegation; **UC11:** verification of attenuated authority and the represented principal across organizations |
+| **Common Task Identifier Across Hops** | **UC7:** common `claim_id`; **UC9:** common audit context identifier across agent hops |
+| **Revocation & Authorization Lifecycle** | **UC8:** termination of task-group authority; **UC9:** task-specific revocation; **UC11:** revocation with bounded staleness |
+| **Cross-Domain Authorization** | **UC10:** authorization across sub-provider administrative domains; **UC11:** authorization between independently administered organizations |
 
-The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as data-subject authorization and execution-layer evidence in UC6, aggregate constraints and late-bound members in UC7, the standardized representation of a cross-agent audit identifier in UC8, batched authorization in UC9, and stranger verifiability in UC10.
+The summary includes only authorization requirements that recur across multiple use cases. Use-case-specific requirements or gaps remain with the individual scenarios, such as data-subject authorization and execution-layer evidence in UC7, aggregate constraints and late-bound members in UC8, the standardized representation of a cross-agent audit identifier in UC9, batched authorization in UC10, and stranger verifiability in UC11.
 
-### Use Case 6: Complex Business Process Automation
+### Use Case 7: Complex Business Process Automation
 
 *   **Scenario Description:** A task is passed through a chain of specialized agents, each performing one step of a larger business process.
 
@@ -427,9 +455,9 @@ The summary includes only authorization requirements that recur across multiple 
     *   **No Standard Representation for a Third-Party Data Subject:** Existing OAuth mechanisms do not define common semantics for representing that the protected data being accessed concerns a person who is distinct from the Resource Owner or authorization subject, or for indicating the authority under which that third-party data may be accessed. RFC 8693 can represent the current and prior actors in a delegation chain, but does not define a distinct Data Subject role for this purpose. RFC 9396 permits application-specific authorization details, but does not define common semantics for representing this relationship. As a result, downstream agents and Resource Servers cannot rely on an interoperable representation of the Data Subject relationship or the authority permitting access to that person's data.
     *   **No Standard for Execution-Layer Evidence:** The existing OAuth framework excels at defining Grant-Layer Authority—what an agent is allowed to do. However, it lacks a standard mechanism for generating Execution-Layer Evidence—a non-repudiable, cryptographic proof of a user's explicit consent for a specific, high-risk action at the moment it occurs. This gap is critical for auditability and dispute resolution in processes like insurance claim payments, as grant-layer tokens (representing the delegation chain) prove potential, not the legitimacy of a specific, executed transaction.
 
-### Use Case 7: Coordinated Task Group
+### Use Case 8: Coordinated Task Group
 
-*   **Scenario Description:** A coordinating agent decomposes a user's request into subtasks and delegates them to multiple specialized agents. Unlike a delegation chain (Use Case 6), authorization in a task group may need to be partitioned across sibling branches, while some task-level constraints and lifecycle state remain shared across the group [I-D.song-oauth-ai-agent-collaborate-authz].
+*   **Scenario Description:** A coordinating agent decomposes a user's request into subtasks and delegates them to multiple specialized agents. Unlike a delegation chain (Use Case 7), authorization in a task group may need to be partitioned across sibling branches, while some task-level constraints and lifecycle state remain shared across the group [I-D.song-oauth-ai-agent-collaborate-authz].
 
 *   **Example 1 -- Partitioned Authorization:** A payment assistant coordinates agents from multiple banks to compare promotional discounts for a payment. Each bank agent should receive only the permissions and authorization context required for its own bank. Permissions or sensitive context assigned to one branch should not automatically be available to another branch.
 *   **Example 2 -- Shared Task Constraint:** A user asks a travel assistant to arrange a business trip and authorizes a total spend of at most 100 units for the trip. The assistant delegates flight booking to a flight agent and hotel booking to a hotel agent operating in separately administered domains. The user has not fixed how the limit is divided between the two. Each delegated authorization may be valid independently, while their combined use may exceed the task-level limit.
@@ -447,7 +475,7 @@ The summary includes only authorization requirements that recur across multiple 
     *   **No Common Task-Group Authorization Model:** Existing mechanisms can authorize or constrain individual members, but do not define a common interoperable binding that relates independently delegated authorities to the same task group, including late-bound members and a common lifecycle.
     *   **No Shared Authorization State Across Branches:** Per-member partitioning does not address constraints consumed jointly by multiple branches. Across separately administered domains, there is no standard way for delegated authorizations to reference and consistently enforce the same task-level aggregate authorization state.
 
-### Use Case 8: Automated DNSSEC DS Record Maintenance Agent
+### Use Case 9: Automated DNSSEC DS Record Maintenance Agent
 
 *   **Scenario Description:** This case follows the multi-agent RRR (Registrant-Registrar-Registry) model defined in `draft-ietf-dnsop-ds-automation-09`. A corporate domain owner deploys chained agents to fully automate DS record updates during DNSSEC KSK rollovers, zone bootstrapping, and zone deletion, relying on CDS/CDNSKEY signals between child authoritative zones and parent registry systems.
 
@@ -471,7 +499,7 @@ The summary includes only authorization requirements that recur across multiple 
     *   **Inadequate Revocation Mechanisms:** OAuth has no standardized task or bulk revocation API. Securing the entire DS automation workflow via OAuth would require making numerous, slow single-token revocation calls during an incident.
     *   **No Standard for Cross-Agent Audit ID:** There is no reserved OAuth JWT claim to carry a consistent audit identifier across all agent hops, which breaks end-to-end compliance logging for the DS automation process.
 
-### Use Case 9: Managed Services
+### Use Case 10: Managed Services
 
 *   **Scenario Description:** The managed service model refers to an integrated end-to-end managed service solution delivered by a prime service integrator through the aggregation of infrastructure and services from multiple sub-providers. End users interact with a single, unified resource platform instead of multiple separate sub-modules. However, coordinating resources across different administrative domains introduces complex authorization challenges. 
 
@@ -498,7 +526,7 @@ The summary includes only authorization requirements that recur across multiple 
 
     *   **Cross-domain Workflow:** There is no standard for request access permissions across different trust domains while ensuring the secure propagation of contextual information (claims, caller identity, rich authorization contexts, etc.).
 
-### Use Case 10: Cross-Organizational Delegation Between Fully-Provisioned Organizations
+### Use Case 11: Cross-Organizational Delegation Between Fully-Provisioned Organizations
 
 *  **Scenario Description:** An agent operated by Organization A must invoke a service operated by Organization B. Each organization runs its own complete trust infrastructure: its own authorization server, identity provider, and workload identity systems. No trust relationship, federation agreement, key exchange, or communication channel exists between them before the first request, and none can be assumed: the interaction may be first contact. This is the ordinary condition of open agent-to-tool ecosystems (e.g., MCP tool servers, agent-mediated commerce) once agents cross organizational boundaries.
 
@@ -517,7 +545,7 @@ The summary includes only authorization requirements that recur across multiple 
 
 ## Category 3: Security & Administrative Scenarios
 
-### Use Case 11: Automated Security Incident Response
+### Use Case 12: Automated Security Incident Response
 
 *   **Scenario Description:** A security agent detects a security threat and must take immediate, automated action to contain it.
 
@@ -559,7 +587,7 @@ This section analyzes several key existing extensions and related concepts to ev
 
 *   **Potential Directions for Evolution:** Future work could explore a "multi-hop DPoP" model. In this model, a parent agent holding a DPoP-bound token could securely derive a new, more constrained token for a sub-agent, binding it to the sub-agent's ephemeral key. This would create a verifiable chain of possession and delegation without requiring constant interaction with the central authorization server, making it more suitable for chained or group agent tasks.
 
-## Client-ID Metadata Document (CIMD) [draft-ietf-oauth-client-metadata]
+## Client-ID Metadata Document (CIMD) [I-D.ietf-oauth-client-id-metadata-document]
 
 *   **Applicability and Strengths:** CIMD (and the broader concept of dynamic client registration) proposes a powerful shift from static, pre-registered clients to dynamic, discoverable ones. By defining `client_id` as a resolvable URI, an Authorization Server can fetch client metadata on-the-fly. This enables "plug-and-play" onboarding for new agents and greatly simplifies the lifecycle management of cryptographic keys by exposing them via a `jwks_uri`.
 
@@ -596,6 +624,8 @@ The use cases above highlight several fundamental gaps between the needs of AI a
 5.  **Authorization Is Modeled Per-Client, Not Per-Group.** OAuth has no notion of a set of clients acting as one task group under a single grant: no group membership representation, no admission of late-selected members, and no group-level lifecycle or atomic revocation.
 
 6.  **The Grant-Layer vs. Execution-Layer Gap:** The existing OAuth framework excels at defining Grant-Layer Authority—what an agent is allowed to do. However, it lacks a standard mechanism for generating Execution-Layer Evidence—a non-repudiable, cryptographic proof of a user's explicit consent for a specific, high-risk action at the moment it occurs. This gap is critical for auditability and dispute resolution, as grant-layer tokens prove potential, not the legitimacy of a specific, executed transaction.
+
+7.  **Lack of Machine-Readable Terminal Disposition.** When a client receives an authorization challenge from a resource server but fails or refuses to complete it (e.g., due to policy, lack of user presence, or unsupported flows), there is no standard, machine-readable way to communicate this disposition back to the resource server. This leaves the resource server to infer the client's state from silence, which hinders incident triage, auditability, and the ability to offer alternative paths to the user.
 
 # Security Considerations
 
@@ -634,6 +664,21 @@ The authors would like to thank Blake Morrison, Mohamad Khalil Yossif, niyuan, D
 
 [RFC9396]
 : Lodderstedt, T., Richer, J., and B. Campbell, "OAuth 2.0 Rich Authorization Requests", RFC 9396, DOI 10.17487/RFC9396, May 2023, <https://www.rfc-editor.org/info/rfc9396>.
+
+[RFC6750]
+: Jones, M. and D. Hardt, "The OAuth 2.0 Authorization Framework: Bearer Token Usage", RFC 6750, DOI 10.17487/RFC6750, October 2012, <https://www.rfc-editor.org/info/rfc6750>.
+
+[RFC7591]
+: Richer, J., Ed., Jones, M., Bradley, J., Machulak, M., and P. Hunt, "OAuth 2.0 Dynamic Client Registration Protocol", RFC 7591, DOI 10.17487/RFC7591, July 2015, <https://www.rfc-editor.org/info/rfc7591>.
+
+[RFC7636]
+: Sakimura, N., Ed., Bradley, J., and N. Agarwal, "Proof Key for Code Exchange by OAuth Public Clients", RFC 7636, DOI 10.17487/RFC7636, September 2015, <https://www.rfc-editor.org/info/rfc7636>.
+
+[RFC9728]
+: Jones, M., Salgueiro, G., Jones, P., and P. Smyslov, "OAuth 2.0 Protected Resource Metadata", RFC 9728, DOI 10.17487/RFC9728, February 2025, <https://www.rfc-editor.org/info/rfc9728>.
+
+[I-D.ietf-oauth-client-id-metadata-document]
+: Brossard, D. and T. Lodderstedt, "OAuth 2.0 Client ID Metadata Document", Work in Progress, Internet-Draft, draft-ietf-oauth-client-id-metadata-document-02, 15 October 2024, <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-client-id-metadata-document-02>.
 
 [I-D.ni-oauth-batch-authorization-delegation]
 : Ni, Y., "Batch Authorization Delegation for OAuth 2.0", Work in Progress, Internet-Draft, draft-ni-oauth-batch-authorization-delegation-00, <https://datatracker.ietf.org/doc/html/draft-ni-oauth-batch-authorization-delegation-00>.
